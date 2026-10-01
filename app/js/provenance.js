@@ -4,7 +4,7 @@
 import * as store from './store.js';
 import * as db from './db.js';
 import { replay, segments, versions, KIND_LABEL } from './history.js';
-import { esc, fmtDateTime, fmtDuration, downloadBlob, safeFileName, sha256Hex, fmtTime } from './util.js';
+import { esc, fmtDateTime, fmtDuration, downloadBlob, safeFileName, sha256Hex } from './util.js';
 import { icon } from './icons.js';
 import { h, toast, confirmDialog, spinner } from './ui.js';
 
@@ -258,7 +258,6 @@ export async function exportVideo(note, frames, result, onProgress) {
   for (let k = 0; k < FPS; k++) { draw(frames.length - 1, 1); await new Promise((r) => setTimeout(r, 1000 / FPS)); }
   rec.stop();
   await done;
-  void result; void fmtTime;
   return new Blob(chunks, { type: (mime || 'video/webm').split(';')[0] });
 }
 

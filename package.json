@@ -9,14 +9,17 @@
     "deploy": "wrangler deploy",
     "server": "node server/server.js",
     "serve:static": "cd app && python3 -m http.server 8080",
-    "test": "node --test tests/unit/",
+    "test": "node --test tests/unit/*.test.js",
     "test:e2e": "node tests/e2e/run.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0"
   },
   "devDependencies": {
+    "playwright": "^1.56.1",
     "wrangler": "^4.145.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

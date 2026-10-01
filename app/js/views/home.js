@@ -5,7 +5,7 @@ import { Editor } from '../editor.js';
 import { settings } from '../settings.js';
 import { esc } from '../util.js';
 import { icon } from '../icons.js';
-import { h, toast } from '../ui.js';
+import { toast } from '../ui.js';
 import { tagPicker, folderPicker } from '../pickers.js';
 import { noteCard, bindNoteActions, onDataChange, nav } from './common.js';
 import { buildToolbar, editorHooks } from './toolbar.js';

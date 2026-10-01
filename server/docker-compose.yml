@@ -1,0 +1,13 @@
+# docker compose -f server/docker-compose.yml up -d
+# Put secrets in server/.env (APP_TOKEN=..., ANTHROPIC_API_KEY=..., SEARXNG_URL=...).
+services:
+  scriptorium:
+    build: { context: .., dockerfile: server/Dockerfile }
+    restart: unless-stopped
+    ports: ["8787:8787"]
+    env_file: .env
+    volumes: ["./data:/data"]
+  # Optional local speech-to-text (OpenAI-compatible). Then set WHISPER_URL=http://whisper:8000 in .env
+  # whisper:
+  #   image: ghcr.io/speaches-ai/speaches:latest-cpu
+  #   restart: unless-stopped
