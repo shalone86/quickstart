@@ -227,6 +227,7 @@ export async function unpublishShare(note) {
 /** Native share sheet (Messages, Mail, AirDrop…) with text, falling back to the clipboard. */
 export async function shareNative(note) {
   const text = `${note.title}\n\n${note.text}`;
+  if (window.AndroidApp?.shareText) { window.AndroidApp.shareText(note.title, text); return 'shared'; }
   if (navigator.share) {
     try {
       const file = new File([await noteStandaloneHTML(note)], `${safeFileName(note.title)}.html`, { type: 'text/html' });

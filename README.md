@@ -43,12 +43,15 @@ Extras: import from Obsidian (Markdown files, folders and zips, including `[[lin
 ### 1. Open the app (nothing to set up)
 
 - **On GitHub Pages:** once this branch is merged to `main`, the *Deploy app to GitHub Pages* workflow publishes it to **https://shalone86.github.io/quickstart/**. One-time step: repo **Settings → Pages → Source: GitHub Actions**.
-- **iPhone:** open the link in Safari → Share → **Add to Home Screen**. As an installed app, its storage is kept and it opens full-screen.
+- **Android app (like Daily):** in the app, go to **Settings → Get the Android app** (or open `https://shalone86.github.io/quickstart/scriptorium.apk`) and install it. It opens full-screen, records voice notes, saves downloads to `Downloads/Scriptorium`, and adds **Share → Save to Scriptorium** to every app. Share an article from Google News or Chrome and it becomes a note, text and images included. You can also use Chrome's **Install app** instead.
+- **iPhone:** open the link in Safari → Share → **Add to Home Screen**.
 - Everything works locally right away: notes, sketches, voice notes with the live transcript, history, math, calendar, search, import/export, and paper search.
 
 > ⚠️ This repo is **public**, and that's fine for the *app code*. Never point sync at this repo. Use a private repo for your notes (below).
 
 ### 2. GitHub sync (works without any server)
+
+**Shortcut:** if you've set up Daily in this browser, the Home screen offers **Use Daily's settings**. One tap and notes sync to `shalone86/todo-data` in a `Notes/` folder next to `Todo/`, with the same token. (Inside the Android app, enter the settings once, since each app keeps its own storage.)
 
 1. Pick the repo for your notes. I suggest your Obsidian vault repo **`shalone86/todo-data`** (private). Notes then show up in Obsidian under `Notes/`, next to your `Todo/` folder. A new private repo works too.
 2. GitHub → Settings → Developer settings → **Fine-grained tokens** → Generate. Choose *Only select repositories* → that repo, then *Repository permissions → Contents: Read and write*.
@@ -122,6 +125,7 @@ app/        the app (plain HTML/CSS/JS modules, no build step), served by Pages,
   js/       editor, store (IndexedDB), sync engines, history/provenance, views…
 worker/     Cloudflare Worker (D1 + R2 + Workers AI + Claude)
 server/     Node home server with the same API (+ Dockerfile)
+android/    tiny full-screen Android wrapper (build: ANDROID_HOME=… android/build-apk.sh → app/scriptorium.apk)
 tests/      unit tests (node --test) and end-to-end browser tests (Playwright)
 docs/       design notes
 ```

@@ -124,6 +124,11 @@ export async function sha256Hex(data) {
 }
 
 export function downloadBlob(blob, filename) {
+  // Inside the Android app, a WebView can't download blob: links; hand the file to Android instead.
+  if (window.AndroidApp?.saveFile) {
+    blobToBase64(blob).then((b64) => window.AndroidApp.saveFile(filename, blob.type || 'application/octet-stream', b64));
+    return;
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;

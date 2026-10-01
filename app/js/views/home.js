@@ -2,7 +2,8 @@
 
 import * as store from '../store.js';
 import { Editor } from '../editor.js';
-import { settings } from '../settings.js';
+import { settings, dailyGithubSettings, useDailyGithub } from '../settings.js';
+import { enabledBackends } from '../sync/engine.js';
 import { esc } from '../util.js';
 import { icon } from '../icons.js';
 import { toast } from '../ui.js';
@@ -37,6 +38,7 @@ export function renderHome(root) {
         </div>
       </div>
     </section>
+    <section class="home-setup"></section>
     <section class="home-pinned"></section>
     <section class="home-recent"></section>
     <section class="home-folders"></section>`;
@@ -107,6 +109,24 @@ export function renderHome(root) {
     }
   });
   makeEditor();
+
+  // one-time nudge to turn on sync (with Daily's GitHub settings if they exist on this site)
+  const setup = root.querySelector('.home-setup');
+  let dismissed = false;
+  try { dismissed = localStorage.getItem('scriptorium:setupDismissed') === '1'; } catch { /* ignore */ }
+  if (!dismissed && !enabledBackends().length) {
+    const d = dailyGithubSettings();
+    setup.innerHTML = `<div class="card setup-card">${icon('cloud')}<div><b>${d ? 'Back up your notes to GitHub' : 'Your notes are only on this device'}</b>
+      <small>${d ? `Use the same GitHub account as Daily (${esc(d.owner)}/${esc(d.repo)}); notes appear in Obsidian under <code>Notes/</code>.` : 'Turn on sync in Settings to back them up and use them on other devices.'}</small>
+      <div class="btn-row">${d ? '<button class="btn small primary" data-s="daily">Use Daily’s settings</button>' : '<a class="btn small primary" href="#/settings">Set up sync</a>'}<button class="btn small ghost" data-s="later">Not now</button></div></div></div>`;
+    setup.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-s]');
+      if (!b) return;
+      if (b.dataset.s === 'daily') { await useDailyGithub(); toast('Connected — syncing to GitHub'); }
+      try { localStorage.setItem('scriptorium:setupDismissed', '1'); } catch { /* ignore */ }
+      setup.innerHTML = '';
+    });
+  }
 
   // lists
   const renderLists = () => {

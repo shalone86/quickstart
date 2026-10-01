@@ -117,6 +117,21 @@ function shell() {
   onDataChange(renderSide);
 }
 
+/** Android app Back button: close a sheet/popover, else go back a screen; false lets Android exit. */
+window.handleBack = () => {
+  if (document.querySelector('.sketch-pad')) return true; // the sketch pad has its own Cancel
+  if (document.querySelector('.sheet-backdrop, .popover, .lightbox')) {
+    document.querySelector('.lightbox')?.remove();
+    closePopover();
+    closeAllSheets();
+    return true;
+  }
+  const raw = location.hash.replace(/^#/, '') || '/';
+  if (raw === '/' || raw === '') return false;
+  if (history.length > 1) history.back(); else location.hash = '#/';
+  return true;
+};
+
 /** Keeps the local version of a note in history when another device's edit wins. */
 function keepConflicts() {
   store.events.on('conflict', ({ local }) => {

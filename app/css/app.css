@@ -636,3 +636,10 @@ body[data-route="ask"] .main { display: flex; flex-direction: column; min-height
 @media print { .sidebar, .tabbar, .note-head, .note-toolbar, .note-foot { display: none !important; } .note-paper { border: 0; box-shadow: none; } body { background: #fff; } }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .toast { background: #3a3733; border: 1px solid #4d4943; } }
 :root[data-theme="dark"] .toast { background: #3a3733; border: 1px solid #4d4943; }
+.setup-card { display: flex; gap: 12px; align-items: flex-start; margin: 8px 0 0; background: var(--accent-soft); border-color: transparent; box-shadow: none; }
+.setup-card > .ic { width: 26px; height: 26px; color: var(--accent-strong); flex: none; margin-top: 2px; }
+.setup-card b { display: block; }
+.setup-card small { color: var(--fg-2); font-size: 14px; }
+.setup-card .btn-row { margin-top: 8px; }
+.banner code { font-size: .85em; }
+.settings-card .banner { flex-wrap: wrap; font-size: 14px; }

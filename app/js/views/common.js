@@ -89,7 +89,7 @@ export function downloadSheet(n) {
   const body = h(`<div class="choice-list">
     <button class="choice" data-f="md">${icon('file-text')}<div><b>Markdown</b><small>For Obsidian and other apps (zip if it has images)</small></div></button>
     <button class="choice" data-f="html">${icon('globe')}<div><b>Web page</b><small>One file with images included</small></div></button>
-    <button class="choice" data-f="pdf">${icon('file-down')}<div><b>PDF</b><small>Opens the print dialog — choose “Save as PDF”</small></div></button>
+    ${window.AndroidApp ? '' : `<button class="choice" data-f="pdf">${icon('file-down')}<div><b>PDF</b><small>Opens the print dialog — choose “Save as PDF”</small></div></button>`}
     <button class="choice" data-f="txt">${icon('type')}<div><b>Plain text</b></div></button>
   </div>`);
   const s = sheet({ title: 'Download note', body, className: 'small' });

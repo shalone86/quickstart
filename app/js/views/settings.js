@@ -2,7 +2,7 @@
 
 import * as store from '../store.js';
 import * as db from '../db.js';
-import { settings, saveSettings } from '../settings.js';
+import { settings, saveSettings, dailyGithubSettings, useDailyGithub } from '../settings.js';
 import { syncNow, syncStatus, syncEvents, testBackend } from '../sync/engine.js';
 import { exportAll, importFiles } from '../exporter.js';
 import { esc, fmtRelative, fmtBytes } from '../util.js';
@@ -32,6 +32,7 @@ export function renderSettings(root) {
       <div class="btn-row"><button class="btn" data-a="test-server">${icon('refresh-cw')} Test connection</button></div>
 
       <h3>GitHub</h3>
+      ${dailyGithubSettings() && !s.githubToken ? `<div class="banner">Your Daily app is already connected to <b>${esc(dailyGithubSettings().owner)}/${esc(dailyGithubSettings().repo)}</b>. Use the same account? Notes go in a <code>Notes/</code> folder next to <code>Todo/</code>. <button class="btn small primary" data-a="use-daily">Use Daily’s settings</button></div>` : ''}
       ${toggle('githubEnabled', 'Back up to GitHub', 'Notes become Markdown files your Obsidian vault can read. Each sync is one commit — a full, timestamped backup.')}
       ${field('githubRepo', 'Repository', { placeholder: 'yourname/notes-data' })}
       ${field('githubPath', 'Folder in the repo', { placeholder: 'Notes', hint: 'Use a folder inside your Obsidian vault repo to see notes in Obsidian.' })}
@@ -40,6 +41,12 @@ export function renderSettings(root) {
       ${toggle('githubMarkdown', 'Write Markdown files', 'Turn off to store only the app’s data file.')}
       <div class="btn-row"><button class="btn" data-a="test-github">${icon('refresh-cw')} Test connection</button><button class="btn primary" data-a="sync">${icon('cloud')} Sync now</button></div>
     </section>
+
+    ${window.AndroidApp ? '' : `<section class="card settings-card">
+      <h2>${icon('download')} Android app</h2>
+      <p class="muted small">Opens Scriptorium full-screen like Daily does, and adds <b>Share → Save to Scriptorium</b> from Google News, Chrome and other apps.</p>
+      <div class="btn-row"><a class="btn primary" href="scriptorium.apk" download>${icon('download')} Get the Android app</a></div>
+    </section>`}
 
     <section class="card settings-card">
       <h2>${icon('globe')} Web, news & reading</h2>
@@ -122,6 +129,7 @@ export function renderSettings(root) {
         const msg = await testBackend(a === 'test-server' ? 'server' : 'github');
         toast(msg, { timeout: 6000 });
       }
+      if (a === 'use-daily') { await useDailyGithub(); toast('Connected to GitHub with Daily’s settings'); window.dispatchEvent(new Event('app:rerender')); }
       if (a === 'sync') { await syncNow(); const st = syncStatus(); toast(st.state === 'error' ? `Sync problem: ${st.error}` : st.state === 'local' ? 'Turn on a sync destination first' : 'Synced'); }
       if (a === 'export') { toast('Preparing download…'); await exportAll(); }
       if (a === 'import-files' || a === 'import-folder') {

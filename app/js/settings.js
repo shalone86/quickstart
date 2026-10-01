@@ -92,3 +92,21 @@ export async function api(path, { method = 'GET', body, headers = {}, raw = fals
 }
 
 export const hasServer = () => !!apiBase();
+
+/**
+ * The Daily checklist app lives on the same site (shalone86.github.io), so in the browser its saved
+ * GitHub settings are readable here. Returns { owner, repo, branch, token } or null.
+ */
+export function dailyGithubSettings() {
+  try {
+    const d = JSON.parse(localStorage.getItem('settings') || 'null');
+    return d && d.token && d.owner && d.repo ? d : null;
+  } catch { return null; }
+}
+
+export async function useDailyGithub() {
+  const d = dailyGithubSettings();
+  if (!d) return false;
+  await saveSettings({ githubEnabled: true, githubToken: d.token, githubRepo: `${d.owner}/${d.repo}`, githubBranch: d.branch || 'main', githubPath: 'Notes' });
+  return true;
+}

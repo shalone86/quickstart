@@ -5,3 +5,6 @@ server/data/
 *.log
 .DS_Store
 server/.env
+android/build/
+android/app/build/
+android/.gradle/
