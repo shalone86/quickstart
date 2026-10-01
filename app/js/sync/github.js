@@ -115,7 +115,10 @@ export const githubBackend = {
     return `Connected to ${r.full_name} (${r.private ? 'private' : 'PUBLIC — consider making it private'})${head ? '' : ' · empty, will initialise'}`;
   },
 
-  async sync() {
+  async sync({ reason } = {}) {
+    // Keep the commit log readable: while you're typing, commit at most about once a minute.
+    if (reason === 'change' && Date.now() - (this.lastRun || 0) < 50000) return { deferred: true };
+    this.lastRun = Date.now();
     for (let attempt = 0; attempt < 3; attempt++) {
       try { return await this.syncOnce(); } catch (e) {
         if (e.status === 422 || e.status === 409) { await sleep(800 * (attempt + 1)); continue; } // branch moved: retry

@@ -30,11 +30,12 @@ export async function syncNow({ reason = 'manual' } = {}) {
   if (!navigator.onLine) { setState('offline'); return; }
   running = (async () => {
     setState('syncing');
-    let anyError = null;
+    let anyError = null, deferred = false;
     for (const b of active) {
       const t0 = Date.now();
       try {
         const res = await b.sync({ reason });
+        if (res?.deferred) { deferred = true; continue; }
         status.per[b.id] = { ok: true, at: Date.now(), ms: Date.now() - t0, ...res };
       } catch (e) {
         console.warn(`sync ${b.id} failed`, e);
@@ -42,7 +43,7 @@ export async function syncNow({ reason = 'manual' } = {}) {
         status.per[b.id] = { ok: false, at: Date.now(), error: e.message || String(e) };
       }
     }
-    setState(anyError ? 'error' : 'synced', { last: Date.now(), error: anyError ? anyError.message : null });
+    setState(anyError ? 'error' : deferred ? 'pending' : 'synced', { last: Date.now(), error: anyError ? anyError.message : null });
   })();
   try { await running; } finally {
     running = null;
