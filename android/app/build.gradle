@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.shalone86.scriptorium'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.shalone86.scriptorium'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        // A fixed key kept in the repo so every rebuild installs as an update over the last one.
+        scriptorium {
+            storeFile file('../scriptorium.keystore')
+            storePassword 'scriptorium'
+            keyAlias 'scriptorium'
+            keyPassword 'scriptorium'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.scriptorium
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}

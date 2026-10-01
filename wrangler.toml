@@ -1,0 +1,38 @@
+# Cloudflare Worker for Scriptorium: serves the app (app/) and its API.
+# Deploy:  npm install && npx wrangler deploy
+# Wrangler creates the D1 database and R2 bucket automatically on first deploy.
+# Then set secrets:  npx wrangler secret put APP_TOKEN   (any long random string — also paste it in the app's Settings)
+#                    npx wrangler secret put ANTHROPIC_API_KEY   (for Ask AI)
+name = "scriptorium"
+main = "worker/src/index.js"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./app"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "scriptorium"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "scriptorium-notes"
+
+# Whisper transcription for voice notes (free daily allowance on Workers AI)
+[ai]
+binding = "AI"
+
+# Nightly gzip backup of every record to R2 (backups/YYYY-MM-DD.json.gz), 60 days kept
+[triggers]
+crons = ["17 7 * * *"]
+
+[vars]
+# Optional: default SearXNG instance (the app can also send its own)
+SEARXNG_URL = ""
+# Optional: override the Claude model used by Ask AI
+AI_MODEL = "claude-opus-5-5"
+
+[observability]
+enabled = true

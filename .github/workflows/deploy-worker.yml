@@ -1,0 +1,28 @@
+# Deploys the Cloudflare Worker (app + API) on every push to main — only once you add the
+# CLOUDFLARE_API_TOKEN (and CLOUDFLARE_ACCOUNT_ID) repository secrets. Without them it does nothing.
+name: Deploy Cloudflare Worker
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check for Cloudflare token
+        id: check
+        run: echo "ready=${{ env.CLOUDFLARE_API_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        if: steps.check.outputs.ready == 'true'
+      - run: npx wrangler deploy
+        if: steps.check.outputs.ready == 'true'
