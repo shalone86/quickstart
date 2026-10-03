@@ -465,8 +465,10 @@ body.in-note .toasts { bottom: calc(20px + var(--safe-b)); }
 
 /* ---------- sketch ---------- */
 .sketch-pad { position: fixed; inset: 0; z-index: 110; background: var(--bg); display: flex; flex-direction: column; padding-top: var(--safe-t); }
-.sketch-bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--card); }
-.sketch-tools { flex: 1; display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; justify-content: center; }
+.sketch-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: var(--card); }
+.sketch-history { display: flex; gap: 4px; }
+.sketch-tools { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 2px; padding: 0 8px 6px; background: var(--card); }
+.sketch-tools .icon-btn.on { background: var(--accent); color: var(--accent-fg); }
 .sketch-tools .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; flex: none; }
 .sketch-sub { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 8px; background: var(--card); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .swatches, .widths { display: flex; gap: 8px; }
@@ -643,3 +645,10 @@ body[data-route="ask"] .main { display: flex; flex-direction: column; min-height
 .setup-card .btn-row { margin-top: 8px; }
 .banner code { font-size: .85em; }
 .settings-card .banner { flex-wrap: wrap; font-size: 14px; }
+.ask-sheet .sheet-body { display: flex; flex-direction: column; }
+.note-ask { display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 10px; }
+.note-ask .chat { overflow: auto; flex: 1; }
+.chat-input.in-sheet { position: static; box-shadow: none; }
+.note-ask .quick { justify-content: center; margin-top: 8px; }
+.note-head .ask-btn { color: var(--accent-strong); }
+body:has(.sheet-backdrop) .toasts { bottom: auto; top: calc(14px + var(--safe-t)); }

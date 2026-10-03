@@ -101,7 +101,14 @@ public class MainActivity extends Activity {
 
     /** Text or a link shared from another app becomes ?share=1&… which the web app saves as a note. */
     private String sharedUrl(Intent intent) {
-        if (intent == null || !Intent.ACTION_SEND.equals(intent.getAction())) return null;
+        if (intent == null) return null;
+        // A note link from Daily (or anywhere): https://shalone86.github.io/quickstart/#/note/…
+        if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
+            Uri u = intent.getData();
+            if (HOST.equals(u.getHost()) && u.getPath() != null && u.getPath().startsWith(PATH)) return u.toString();
+            return null;
+        }
+        if (!Intent.ACTION_SEND.equals(intent.getAction())) return null;
         String text = intent.getStringExtra(Intent.EXTRA_TEXT);
         String title = intent.getStringExtra(Intent.EXTRA_SUBJECT);
         if (text == null) return null;

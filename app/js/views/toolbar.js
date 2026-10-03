@@ -46,7 +46,7 @@ export function buildToolbar(editor, { compact = false } = {}) {
     set('bold', q('bold')); set('italic', q('italic')); set('underline', q('underline')); set('strike', q('strikeThrough'));
     set('ul', q('insertUnorderedList') && !editor.closest('ul.checklist')); set('ol', q('insertOrderedList'));
     set('check', !!editor.closest('ul.checklist'));
-    set('highlight', !!editor.closest('mark'));
+    set('highlight', editor.isHighlighted());
     const al = el.querySelector('[data-a="align"]');
     if (al) al.innerHTML = icon({ left: 'align-left', center: 'align-center', right: 'align-right', justify: 'align-justify' }[editor.currentAlign()] || 'align-left');
   };
@@ -61,7 +61,7 @@ export async function runAction(editor, a, anchor) {
     case 'underline': return editor.cmd('underline');
     case 'strike': return editor.cmd('strikeThrough');
     case 'highlight': {
-      if (editor.closest('mark') || document.getSelection().isCollapsed) return editor.highlight();
+      if (editor.isHighlighted() || document.getSelection().isCollapsed) return editor.highlight();
       const pick = await menu([
         { label: 'Yellow', icon: 'highlighter', c: 'yellow' }, { label: 'Green', icon: 'highlighter', c: 'green' },
         { label: 'Blue', icon: 'highlighter', c: 'blue' }, { label: 'Pink', icon: 'highlighter', c: 'pink' }, { label: 'Purple', icon: 'highlighter', c: 'purple' },

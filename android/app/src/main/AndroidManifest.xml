@@ -20,6 +20,13 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Links to notes (e.g. 📝 links in Daily) open here. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="shalone86.github.io" android:pathPrefix="/quickstart" />
+            </intent-filter>
             <!-- "Share → Scriptorium" from Google News, Chrome, etc. -->
             <intent-filter android:label="Save to Scriptorium">
                 <action android:name="android.intent.action.SEND" />
