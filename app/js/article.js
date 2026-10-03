@@ -80,6 +80,35 @@ export async function fetchArticle(url) {
   throw new Error(`Couldn't read that page (${errors.join('; ')}). Connect your Worker/server in Settings for best results.`);
 }
 
+const JUNK = /^(advertisement|ad|sponsored|read more|read next|related( stories| articles| coverage| content)?|more from|recommended|see also|also read|most read|trending|watch:?|listen:?|sign up|subscribe|get the newsletter|newsletter|follow us|share( this)?( article| story)?|click here|copy link|comments?|image credit|getty images|tags?:|topics?:)\b/i;
+
+/**
+ * Keeps the article body only: drops link lists, "Read more"/newsletter/share blocks and other
+ * page furniture, and turns the remaining links into plain text. Images and headings stay.
+ */
+export function cleanArticleHTML(html) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  const root = tpl.content;
+  root.querySelectorAll('nav, aside, footer, form, button, iframe, script, style, noscript, svg, [role="navigation"], [aria-hidden="true"]').forEach((el) => el.remove());
+  const textLen = (el) => el.textContent.replace(/\s+/g, ' ').trim().length;
+  const linkLen = (el) => [...el.querySelectorAll('a')].reduce((n, a) => n + textLen(a), 0);
+  for (const el of [...root.querySelectorAll('p, li, ul, ol, div, section, h2, h3, h4, h5, h6, figcaption, blockquote, table')]) {
+    if (!el.isConnected) continue;
+    const t = textLen(el);
+    if (el.querySelector('img') && t < 300) continue; // a figure: keep the picture
+    const text = el.textContent.replace(/\s+/g, ' ').trim();
+    if (!t) { if (!el.querySelector('img')) el.remove(); continue; }
+    // mostly links (related stories, tag lists, "follow us on…"), or a short furniture line
+    if ((linkLen(el) / t > 0.6 && t < 600) || (t < 120 && JUNK.test(text))) el.remove();
+  }
+  // links → plain text
+  root.querySelectorAll('a').forEach((a) => a.replaceWith(...a.childNodes));
+  // trailing horizontal rules / empty blocks
+  root.querySelectorAll('hr').forEach((el) => el.remove());
+  return tpl.innerHTML;
+}
+
 /** Downloads remote images into the note so they survive link rot and work offline. */
 async function localizeImages(html, noteId) {
   if (!hasServer() || !settings().saveImagesOffline) return html;
@@ -106,6 +135,10 @@ async function localizeImages(html, noteId) {
  * `paper` adds scholarly metadata (authors, venue, DOI, abstract) above the article.
  */
 export async function saveArticle(url, { folderName, paper = null, fallbackHTML = '' } = {}) {
+  // Google News links only open a Google page: save (and link to) the publisher's article instead
+  if (/^https:\/\/news\.google\.com\/(rss\/)?articles\//.test(url) && hasServer()) {
+    try { url = (await api(`/api/meta?url=${encodeURIComponent(url)}`)).url || url; } catch { /* keep the Google link */ }
+  }
   let art = null, err = null;
   try { art = await fetchArticle(url); } catch (e) { err = e; }
   if (!art && !paper && !fallbackHTML) throw err;
@@ -120,7 +153,7 @@ export async function saveArticle(url, { folderName, paper = null, fallbackHTML 
   let html = `<h1>${esc(title)}</h1><p><small>${meta.join(' · ')}</small></p><p><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url.replace(/^https?:\/\//, '').slice(0, 80))}</a>${paper?.doi ? ` · DOI <a href="https://doi.org/${esc(paper.doi)}" target="_blank" rel="noopener noreferrer">${esc(paper.doi)}</a>` : ''}</p>`;
   if (paper?.abstract) html += `<blockquote><p><b>Abstract.</b> ${esc(paper.abstract)}</p></blockquote>`;
   if (art?.leadImage && !art.html.includes(art.leadImage)) html += `<p><img src="${esc(art.leadImage)}" alt=""></p>`;
-  html += art ? art.html : fallbackHTML;
+  html += art ? (settings().cleanArticles ? cleanArticleHTML(art.html) : art.html) : fallbackHTML;
   if (!art && err) html += `<p><small>Full text could not be fetched (${esc(err.message)}).</small></p>`;
   html = sanitizeHTML(html);
 

@@ -3,6 +3,7 @@
 // articles/feeds, SearXNG proxy, and public share links.
 
 import { answerResponse } from './ai.js';
+import { pageMeta, resolveGoogleNews } from './meta.js';
 
 const VERSION = '1.0.0';
 
@@ -83,7 +84,7 @@ async function blob(req, env, id) {
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
 
 async function proxyFetch(url) {
-  const target = url.searchParams.get('url');
+  const target = await resolveGoogleNews(url.searchParams.get('url') || '');
   let u;
   try { u = new URL(target); } catch { return fail(400, 'bad url'); }
   if (!/^https?:$/.test(u.protocol)) return fail(400, 'bad url');
@@ -182,6 +183,7 @@ export default {
       if (path.startsWith('/api/blob/')) return await blob(req, env, decodeURIComponent(path.slice(10)));
       if (path === '/api/fetch') return await proxyFetch(url);
       if (path === '/api/search') return await search(url, env);
+      if (path === '/api/meta') return json(await pageMeta(url.searchParams.get('url')));
       if (path === '/api/transcribe' && req.method === 'POST') return await transcribe(req, env);
       if (path === '/api/ai' && req.method === 'POST') return answerResponse(await req.json(), { apiKey: env.ANTHROPIC_API_KEY, aiUrl: env.AI_URL, aiKey: env.AI_API_KEY, searxng: env.SEARXNG_URL, model: env.AI_MODEL }, CORS);
       if (path === '/api/share' && req.method === 'POST') return await share(req, env, url);

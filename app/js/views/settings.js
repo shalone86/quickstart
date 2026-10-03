@@ -52,6 +52,7 @@ export function renderSettings(root) {
       <h2>${icon('globe')} Web, news & reading</h2>
       ${field('searxngUrl', 'SearXNG address', { placeholder: 'https://search.yourserver.com', hint: 'JSON output must be enabled in SearXNG’s settings.yml (<code>formats: [html, json]</code>).' })}
       ${toggle('readerFallback', 'Use the free r.jina.ai reader when no server is connected', 'Lets “save article” work before you set up your Worker. The link is sent to Jina’s reader service.')}
+      ${toggle('cleanArticles', 'Clean saved articles', 'Keeps just the headline, article text and pictures: removes links, “Read more”, related stories, share and newsletter boxes.')}
       ${toggle('saveImagesOffline', 'Keep article images in the note', 'Downloads images through your server so saved articles keep their pictures forever.')}
       ${field('savedFolder', 'Folder for saved articles', { placeholder: 'Saved articles' })}
       ${field('openalexKey', 'OpenAlex key (optional)', { type: 'password', placeholder: 'free key from openalex.org', hint: 'Papers come from OpenAlex. It is free without a key up to a daily limit; a free key raises it.' })}

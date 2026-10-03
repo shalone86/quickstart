@@ -3,6 +3,7 @@
 
 import * as store from './store.js';
 import { settings, api, hasServer } from './settings.js';
+import { sourceForFeed, googleQuery } from './sources.js';
 
 const OA = 'https://api.openalex.org';
 const MAILTO = 'mailto=scriptorium-notes@users.noreply.github.com';
@@ -122,6 +123,19 @@ async function fetchText(url) {
   return res.text();
 }
 
+/** Best image for a feed item: media:content/thumbnail (largest), image enclosure, then the first <img> in the text. */
+function feedImage(it, summaryDoc) {
+  const media = [...it.getElementsByTagNameNS('*', 'content'), ...it.getElementsByTagNameNS('*', 'thumbnail')]
+    .filter((m) => m.getAttribute('url') && (m.localName === 'thumbnail' || /image/.test(m.getAttribute('medium') || m.getAttribute('type') || 'image') || /\.(jpe?g|png|webp|avif)(\?|$)/i.test(m.getAttribute('url'))))
+    .sort((a, b) => (+b.getAttribute('width') || 0) - (+a.getAttribute('width') || 0));
+  const enclosure = [...it.querySelectorAll('enclosure, link[rel="enclosure"]')].find((e) => /^image/.test(e.getAttribute('type') || '') || /\.(jpe?g|png|webp)(\?|$)/i.test(e.getAttribute('url') || e.getAttribute('href') || ''));
+  const encoded = it.getElementsByTagNameNS('*', 'encoded')[0]?.textContent || '';
+  const inline = summaryDoc.querySelector('img')?.getAttribute('src') || (encoded && new DOMParser().parseFromString(encoded, 'text/html').querySelector('img')?.getAttribute('src')) || '';
+  const url = media[0]?.getAttribute('url') || enclosure?.getAttribute('url') || enclosure?.getAttribute('href') || inline || '';
+  // tracking pixels and feed logos aren't images worth showing
+  return /^https?:/.test(url) && !/(pixel|spacer|1x1|feedburner|gravatar)/i.test(url) ? url : '';
+}
+
 export function parseFeed(xml, feedTitle = '') {
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   if (doc.querySelector('parsererror')) throw new Error('Not a valid feed');
@@ -133,10 +147,7 @@ export function parseFeed(xml, feedTitle = '') {
     const link = linkEl?.getAttribute('href') || linkEl?.textContent?.trim() || text(it, 'guid');
     const rawSummary = text(it, 'description') || text(it, 'summary') || text(it, 'content');
     const summaryDoc = new DOMParser().parseFromString(rawSummary, 'text/html');
-    const img = it.querySelector('enclosure[type^="image"]')?.getAttribute('url') ||
-      it.getElementsByTagNameNS('*', 'thumbnail')[0]?.getAttribute('url') ||
-      it.getElementsByTagNameNS('*', 'content')[0]?.getAttribute('url') ||
-      summaryDoc.querySelector('img')?.getAttribute('src') || '';
+    const img = feedImage(it, summaryDoc);
     const date = text(it, 'pubDate') || text(it, 'published') || text(it, 'updated') || it.getElementsByTagNameNS('*', 'date')[0]?.textContent || '';
     items.push({
       kind: 'article',
@@ -146,20 +157,62 @@ export function parseFeed(xml, feedTitle = '') {
       summary: summaryDoc.body.textContent.replace(/\s+/g, ' ').trim().slice(0, 400),
       date: date && !Number.isNaN(Date.parse(date)) ? new Date(date).toISOString() : '',
       source: it.querySelector('source')?.textContent?.trim() || channelTitle,
+      sourceUrl: it.querySelector('source')?.getAttribute('url') || '',
       image: img,
     });
   }
   return { title: channelTitle, items };
 }
 
+const looksLikeHTML = (text) => /^\s*(<!doctype html|<html)/i.test(text) || (/<html[\s>]/i.test(text.slice(0, 2000)) && !/<(rss|feed|rdf:RDF)[\s>]/i.test(text.slice(0, 2000)));
+
+/**
+ * The RSS/Atom feed behind a link: the link itself if it's a feed, else the feed the page advertises,
+ * else the usual /feed, /rss paths. Returns { url, title } or throws.
+ */
+export async function discoverFeed(url) {
+  const text = await fetchText(url);
+  if (!looksLikeHTML(text)) return { url, title: parseFeed(text).title };
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  const links = [...doc.querySelectorAll('link[rel~="alternate"]')]
+    .filter((l) => /(rss|atom)\+xml/i.test(l.getAttribute('type') || '') && !/comments?/i.test(l.getAttribute('href') || ''))
+    .map((l) => new URL(l.getAttribute('href'), url).href);
+  const origin = new URL(url).origin;
+  for (const candidate of [...links, `${origin}/feed/`, `${origin}/rss`, `${origin}/rss.xml`, `${origin}/feed.xml`, `${origin}/index.xml`]) {
+    try {
+      const xml = await fetchText(candidate);
+      if (looksLikeHTML(xml)) continue;
+      const parsed = parseFeed(xml);
+      if (parsed.items.length) return { url: candidate, title: parsed.title };
+    } catch { /* try the next one */ }
+  }
+  throw new Error("That page doesn't have an RSS feed");
+}
+
 export async function loadFeed(feed) {
-  const xml = await fetchText(feed.url);
+  let xml = await fetchText(feed.url);
+  if (looksLikeHTML(xml)) {
+    // a homepage was added instead of its feed: find the real feed once and remember it
+    const found = await discoverFeed(feed.url);
+    const title = sourceForFeed(feed)?.name || (feed.title && !/^[\w.-]+\.\w+$/.test(feed.title) ? feed.title : found.title || feed.title);
+    await store.saveFeed({ ...feed, url: found.url, title });
+    feed = { ...feed, url: found.url, title };
+    xml = await fetchText(found.url);
+  }
   const parsed = parseFeed(xml, feed.title);
-  return parsed.items.map((i) => ({ ...i, feedId: feed.id, source: i.source || feed.title }));
+  // Google News items name their publisher; elsewhere the feed's own name reads better than its channel title
+  const google = !!googleQuery(feed.url);
+  return parsed.items.map((i) => ({ ...i, feedId: feed.id, feedUrl: feed.url, source: (google && i.source) || feed.title || i.source }));
+}
+
+/** One-off Google News search (not saved as a feed). */
+export async function searchNews(query) {
+  const parsed = parseFeed(await fetchText(googleNewsFeed(query)), 'Google News');
+  return parsed.items.map((i) => ({ ...i, feedUrl: googleNewsFeed(query) }));
 }
 
 export async function loadAllFeeds() {
-  const all = await Promise.all(store.feeds().map((f) => loadFeed(f).catch((e) => [{ kind: 'error', id: f.id, title: f.title, error: e.message }])));
+  const all = await Promise.all(store.feeds().map((f) => loadFeed(f).catch((e) => [{ kind: 'error', id: f.id, title: f.title, url: f.url, error: e.message }])));
   const items = all.flat();
   const errors = items.filter((i) => i.kind === 'error');
   const articles = items.filter((i) => i.kind !== 'error').sort((a, b) => (b.date || '').localeCompare(a.date || ''));

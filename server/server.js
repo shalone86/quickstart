@@ -17,6 +17,7 @@ import net from 'node:net';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { pageMeta, resolveGoogleNews } from '../worker/src/meta.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PORT = +(process.env.PORT || 8787);
@@ -137,7 +138,7 @@ async function handleBlob(req, res, id) {
 
 async function handleFetch(res, url) {
   let u;
-  try { u = new URL(url.searchParams.get('url')); } catch { return fail(res, 400, 'bad url'); }
+  try { u = new URL(await resolveGoogleNews(url.searchParams.get('url'))); } catch { return fail(res, 400, 'bad url'); }
   if (!/^https?:$/.test(u.protocol)) return fail(res, 400, 'bad url');
   if (await isPrivate(u.hostname)) return fail(res, 403, 'Private network addresses are blocked (set ALLOW_PRIVATE_FETCH=1 to allow)');
   const r = await fetch(u.href, { headers: { 'User-Agent': UA, Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8', 'Accept-Language': 'en-US,en;q=0.9' }, redirect: 'follow', signal: AbortSignal.timeout(20000) });
@@ -151,6 +152,22 @@ async function handleFetch(res, url) {
   let text;
   try { text = new TextDecoder(charset).decode(buf); } catch { text = buf.toString('utf8'); }
   send(res, 200, text, { 'Content-Type': ct.includes('xml') ? 'text/xml; charset=utf-8' : 'text/plain; charset=utf-8', 'X-Final-Url': r.url });
+}
+
+// Featured image + real URL for news cards. Cached: feeds show the same articles all day.
+const metaCache = new Map();
+async function handleMeta(res, url) {
+  let u;
+  try { u = new URL(url.searchParams.get('url')); } catch { return fail(res, 400, 'bad url'); }
+  if (!/^https?:$/.test(u.protocol)) return fail(res, 400, 'bad url');
+  if (await isPrivate(u.hostname)) return fail(res, 403, 'Private network addresses are blocked');
+  let meta = metaCache.get(u.href);
+  if (!meta) {
+    meta = await pageMeta(u.href).catch(() => ({ url: u.href, image: '', title: '', site: '' }));
+    metaCache.set(u.href, meta);
+    if (metaCache.size > 5000) metaCache.delete(metaCache.keys().next().value);
+  }
+  json(res, meta);
 }
 
 async function handleSearch(res, url) {
@@ -232,6 +249,7 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith('/api/blob/')) return await handleBlob(req, res, decodeURIComponent(p.slice(10)));
     if (p === '/api/fetch') return await handleFetch(res, url);
     if (p === '/api/search') return await handleSearch(res, url);
+    if (p === '/api/meta') return await handleMeta(res, url);
     if (p === '/api/transcribe' && req.method === 'POST') return await handleTranscribe(req, res);
     if (p === '/api/ai' && req.method === 'POST') return await handleAI(req, res);
     if (p === '/api/share' && req.method === 'POST') return await handleShare(req, res, url);

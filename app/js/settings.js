@@ -23,6 +23,8 @@ export const DEFAULTS = {
   // Articles: use r.jina.ai when no server is configured
   readerFallback: true,
   saveImagesOffline: true,
+  // Saved articles: just the headline, text and images — no links, share/related/newsletter clutter
+  cleanArticles: true,
   // News
   interests: ['large language models', 'Catholic theology', 'music cognition'],
   savedFolder: 'Saved articles',

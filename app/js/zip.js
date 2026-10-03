@@ -75,8 +75,8 @@ export async function makeZip(files) {
   return new Blob([...chunks, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
 }
 
-/** Reads a zip into [{ name, data: Uint8Array }]. Supports stored and deflated entries. */
-export async function readZip(blob) {
+/** Reads a zip into [{ name, data: Uint8Array }]. Supports stored and deflated entries. `filter(name)` skips the rest. */
+export async function readZip(blob, { filter } = {}) {
   const buf = new Uint8Array(await blob.arrayBuffer());
   const dv = new DataView(buf.buffer);
   let eocd = -1;
@@ -93,7 +93,7 @@ export async function readZip(blob) {
     const loff = dv.getUint32(p + 42, true);
     const name = dec.decode(buf.subarray(p + 46, p + 46 + nlen));
     p += 46 + nlen + xlen + clen;
-    if (name.endsWith('/')) continue;
+    if (name.endsWith('/') || (filter && !filter(name))) continue;
     const lstart = loff + 30 + dv.getUint16(loff + 26, true) + dv.getUint16(loff + 28, true);
     const raw = buf.subarray(lstart, lstart + csize);
     let data = raw;
