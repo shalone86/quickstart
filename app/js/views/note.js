@@ -9,6 +9,7 @@ import { promptDialog, toast } from '../ui.js';
 import { tagPicker, folderPicker } from '../pickers.js';
 import { noteMenu, shareSheet, nav, onDataChange } from './common.js';
 import { buildToolbar, editorHooks } from './toolbar.js';
+import { openNoteAsk } from './askpanel.js';
 import { syncBadge } from './syncbadge.js';
 
 export function renderNote(root, params, id) {
@@ -24,6 +25,7 @@ export function renderNote(root, params, id) {
         <div class="note-head-mid"><button class="folder-btn" data-a="folder"></button></div>
         <div class="head-actions">
           <span class="sync-slot"></span>
+          <button class="icon-btn ask-btn" data-a="ask" aria-label="Ask AI about this note" title="Ask AI about this note">${icon('sparkles')}</button>
           <button class="icon-btn" data-a="tags" aria-label="Tags" title="Tags">${icon('tag')}</button>
           <button class="icon-btn" data-a="pin" aria-label="Pin" title="Pin">${icon('pin')}</button>
           <button class="icon-btn" data-a="bookmark" aria-label="Bookmark" title="Bookmark">${icon('bookmark')}</button>
@@ -90,6 +92,7 @@ export function renderNote(root, params, id) {
     if (a === 'pin') { await store.updateNote(id, { pinned: !note.pinned }, { touch: false }); toast(note.pinned ? 'Pinned' : 'Unpinned'); }
     if (a === 'bookmark') { await store.updateNote(id, { bookmarked: !note.bookmarked }, { touch: false }); toast(note.bookmarked ? 'Bookmarked' : 'Bookmark removed'); }
     if (a === 'share') { editor.flush(); shareSheet(note); }
+    if (a === 'ask') openNoteAsk(editor);
     if (a === 'restore') { await store.restoreNote(id); window.dispatchEvent(new Event('app:rerender')); }
     if (a === 'more') {
       editor.flush();

@@ -17,18 +17,19 @@ export function openSketch(vector = null) {
     const el = h(`<div class="sketch-pad" role="dialog" aria-label="Sketch">
       <header class="sketch-bar">
         <button class="btn ghost" data-a="cancel">Cancel</button>
-        <div class="sketch-tools">
-          ${tool('pen', 'pen-tool', 'Pen')}${tool('marker', 'highlighter', 'Highlighter')}${tool('eraser', 'eraser', 'Eraser')}
-          <span class="sep"></span>
-          ${tool('line', 'minus', 'Line')}${tool('arrow', 'move-up-right', 'Arrow')}${tool('rect', 'square', 'Box')}${tool('ellipse', 'circle', 'Circle')}
-          <span class="sep"></span>
-          <button class="icon-btn" data-a="undo" title="Undo">${icon('undo-2')}</button>
-          <button class="icon-btn" data-a="redo" title="Redo">${icon('redo-2')}</button>
-          <button class="icon-btn" data-a="bg" title="Paper">${icon('grid-3x3')}</button>
-          <button class="icon-btn" data-a="clear" title="Clear">${icon('trash-2')}</button>
+        <div class="sketch-history">
+          <button class="icon-btn" data-a="undo" title="Undo" aria-label="Undo">${icon('undo-2')}</button>
+          <button class="icon-btn" data-a="redo" title="Redo" aria-label="Redo">${icon('redo-2')}</button>
+          <button class="icon-btn" data-a="bg" title="Paper: grid, dots, blank, lines" aria-label="Change paper">${icon('grid-3x3')}</button>
+          <button class="icon-btn" data-a="clear" title="Clear" aria-label="Clear">${icon('trash-2')}</button>
         </div>
         <button class="btn primary" data-a="done">Done</button>
       </header>
+      <div class="sketch-tools">
+        ${tool('pen', 'pen-tool', 'Pen')}${tool('marker', 'highlighter', 'Highlighter')}${tool('eraser', 'eraser', 'Eraser')}
+        <span class="sep"></span>
+        ${tool('line', 'minus', 'Line')}${tool('arrow', 'move-up-right', 'Arrow')}${tool('rect', 'square', 'Box')}${tool('ellipse', 'circle', 'Circle')}
+      </div>
       <div class="sketch-sub">
         <div class="swatches">${COLORS.map((c) => `<button class="swatch" data-color="${c}" style="--c:${c}" aria-label="Color ${c}"></button>`).join('')}</div>
         <div class="widths">${WIDTHS.map((w) => `<button class="wbtn" data-width="${w}" aria-label="Width ${w}"><span style="--w:${w * 1.5}px"></span></button>`).join('')}</div>

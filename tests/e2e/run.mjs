@@ -130,8 +130,8 @@ await t('@ links, tags, folders, checklist, highlight, backlinks', async () => {
   await A.keyboard.type('[] cables');
   await A.keyboard.press('Shift+Home');
   await A.keyboard.press('Control+Shift+H');
-  await A.waitForTimeout(600);
-  const html = await A.$eval('.note-view .editor', (e) => e.innerHTML);
+  await A.waitForTimeout(800);
+  const html = await A.evaluate(async () => { const s = await import('./js/store.js'); return s.liveNotes().find((n) => n.title === 'Church cameras').html; });
   assert.match(html, /<a class="note-link" data-note-id="n\w+" href="#\/note\/n\w+">Groceries<\/a>/);
   assert.match(html, /<ul class="checklist"><li data-checked="false"><mark>cables<\/mark><\/li><\/ul>/);
   const foot = await A.$eval('.note-foot', (e) => e.innerText);
@@ -258,6 +258,64 @@ await t('share link serves a read-only page', async () => {
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-security-policy'), /default-src 'none'/);
   assert.match(await res.text(), /Groceries/);
+});
+
+await t('highlight is undoable, removable, and Enter starts plain text', async () => {
+  const P = await device('H');
+  const saved = async () => { await P.waitForTimeout(500); return P.evaluate(async () => { const s = await import('./js/store.js'); return s.sortNotes(s.liveNotes())[0]?.html; }); };
+  await P.click('.composer .editor');
+  await P.keyboard.type('Hello world');
+  await P.keyboard.press('Shift+Home');
+  await P.keyboard.press('Control+Shift+H');
+  assert.equal(await saved(), '<p><mark>Hello world</mark></p>');
+  await P.keyboard.press('Control+z');
+  assert.equal(await saved(), '<p>Hello world</p>');
+  await P.keyboard.press('Control+Shift+z');
+  await P.keyboard.press('End');
+  await P.keyboard.press('Enter');
+  await P.keyboard.type('plain');
+  assert.equal(await saved(), '<p><mark>Hello world</mark></p><p>plain</p>');
+  await P.click('.composer .editor p >> nth=0');
+  await P.keyboard.press('Control+Shift+H');
+  assert.equal(await saved(), '<p>Hello world</p><p>plain</p>');
+  await P.context().close();
+});
+
+await t('sketch tools all reachable on a small phone', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 740 } });
+  const P = await ctx.newPage();
+  await P.goto(`${BASE}#/`);
+  await P.waitForSelector('.composer .editor');
+  await P.click('.composer [data-a="sketch"]');
+  for (const tool of ['pen', 'marker', 'eraser', 'line', 'arrow', 'rect', 'ellipse']) {
+    const r = await P.$eval(`[data-tool="${tool}"]`, (e) => e.getBoundingClientRect().toJSON());
+    assert.ok(r.left >= 0 && r.right <= 360, `${tool} is off screen`);
+  }
+  await P.click('[data-tool="rect"]');
+  await P.click('[data-tool="pen"]');
+  assert.equal(await P.$eval('.sketch-tools .on', (e) => e.dataset.tool), 'pen');
+  await ctx.close();
+});
+
+await t('Ask AI inside a note sends the note and inserts the answer', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  let sent;
+  await ctx.route('**/api/ai', (r) => { sent = JSON.parse(r.request().postData()); return r.fulfill({ status: 200, contentType: 'text/event-stream', body: 'data: {"type":"text","text":"- step one"}\n\ndata: {"type":"done"}\n\n' }); });
+  const P = await ctx.newPage();
+  await P.goto(`${BASE}#/`);
+  await P.waitForSelector('.composer .editor');
+  await P.evaluate(async () => { const s = await import('./js/settings.js'); await s.saveSettings({ serverEnabled: true, serverToken: 'e2e' }); });
+  await P.click('.composer .editor');
+  await P.keyboard.type('Plan\nDo the thing.');
+  await P.click('.composer-save');
+  await P.click('.note-card');
+  await P.click('.note-head [data-a="ask"]');
+  await P.click('[data-quick="1"]');
+  await P.click('[data-insert]');
+  await P.waitForTimeout(600);
+  assert.equal(sent.notes[0].title, 'Plan');
+  assert.match(await P.$eval('.note-view .editor', (e) => e.innerHTML), /<blockquote><ul><li>step one<\/li><\/ul><\/blockquote>/);
+  await ctx.close();
 });
 
 await t('no uncaught page errors', async () => { assert.deepEqual(errors, []); });

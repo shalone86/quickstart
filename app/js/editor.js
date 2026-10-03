@@ -45,6 +45,7 @@ export class Editor {
     this.recorder?.endSession();
     this.note = note;
     this.el.innerHTML = note?.html || '';
+    marksToSpans(this.el);
     this.normalize();
     this.updateEmpty();
     store.hydrateMedia(this.el);
@@ -73,6 +74,7 @@ export class Editor {
     const clone = this.el.cloneNode(true);
     clone.querySelectorAll('img[data-att], audio[data-att]').forEach((m) => { m.removeAttribute('src'); m.classList.remove('missing', 'selected'); if (!m.className) m.removeAttribute('class'); });
     clone.querySelectorAll('[data-ui]').forEach((x) => x.remove());
+    spansToMarks(clone);
     clone.querySelectorAll('.audio-block').forEach((b) => { b.innerHTML = `<audio controls preload="metadata" data-att="${b.dataset.att}"></audio>`; });
     let html = clone.innerHTML;
     if (!nodeText(clone).trim() && !clone.querySelector('img, audio, hr')) html = '';
@@ -85,6 +87,7 @@ export class Editor {
 
   normalize() {
     this.fixNesting();
+    if (this.el.querySelector('mark')) keepCaret(() => marksToSpans(this.el)); // e.g. after pasting highlighted text
     // Make sure checklists have state and audio blocks are not editable.
     this.el.querySelectorAll('ul.checklist > li:not([data-checked])').forEach((li) => { li.dataset.checked = 'false'; });
     this.el.querySelectorAll('.audio-block').forEach((b) => b.setAttribute('contenteditable', 'false'));
@@ -168,6 +171,7 @@ export class Editor {
   /** Replace contents programmatically (restore version, AI insert). */
   setHTML(html, kind = 'u') {
     this.el.innerHTML = html;
+    marksToSpans(this.el);
     this.normalize();
     store.hydrateMedia(this.el);
     this.decorate();
@@ -204,6 +208,7 @@ export class Editor {
       if (e.inputType === 'insertText' && e.data === '@' && /(^|[\s(\u00a0])@$/.test(this.textBeforeCaret())) this.openMention();
       if (e.inputType === 'insertText' && e.data === '=') this.tryInlineCalc();
       if (e.inputType === 'insertParagraph' || e.inputType === 'insertText') this.ensureChecklistState();
+      if (e.inputType === 'insertParagraph') this.resetTypingStyle();
     });
 
     el.addEventListener('keydown', (e) => this.onKey(e));
@@ -386,55 +391,66 @@ export class Editor {
 
   exitEmptyChecklist() { return false; }
 
-  /** Toggle highlight on the selection (wraps each selected text run in <mark>). */
+  /**
+   * Toggle highlight on the selection using the browser's own hiliteColor command, so applying and
+   * removing highlights are both on the native undo stack (⌘Z / the undo button).
+   * While editing, highlights are <span style="background-color">; they are saved as <mark>.
+   */
   highlight(color = 'yellow') {
     this.restoreRangeIfNeeded();
     const sel = document.getSelection();
     if (!sel.rangeCount) return;
+    try { document.execCommand('styleWithCSS', false, true); } catch { /* ignore */ }
     const range = sel.getRangeAt(0);
-    const markAncestor = (n) => (n.nodeType === 3 ? n.parentNode : n).closest?.('mark');
     if (range.collapsed) {
-      const m = markAncestor(range.startContainer);
-      if (m && this.el.contains(m)) { m.replaceWith(...m.childNodes); this.changed('f'); }
-      return;
-    }
-    const texts = textNodesInRange(range, this.el);
-    const allMarked = texts.length && texts.every((t) => markAncestor(t));
-    if (allMarked) {
-      new Set(texts.map(markAncestor)).forEach((m) => m && m.replaceWith(...m.childNodes));
+      // caret inside a highlight: remove that whole highlight
+      const hl = highlightAncestor(range.startContainer, this.el);
+      if (!hl) return;
+      const r = document.createRange();
+      r.selectNodeContents(hl);
+      sel.removeAllRanges();
+      sel.addRange(r);
+      document.execCommand('hiliteColor', false, 'transparent');
+      sel.collapse(r.endContainer, r.endOffset);
     } else {
-      const first = texts[0], last = texts[texts.length - 1];
-      const startOff = range.startOffset, endOff = range.endOffset;
-      const sc = range.startContainer, ec = range.endContainer;
-      let newFirst = null, newLast = null;
-      for (const t of texts) {
-        if (markAncestor(t)) continue;
-        let node = t;
-        let s = 0, e = t.length;
-        if (t === sc) s = startOff;
-        if (t === ec) e = endOff;
-        if (s >= e) continue;
-        if (e < node.length) node.splitText(e);
-        if (s > 0) node = node.splitText(s);
-        const mark = document.createElement('mark');
-        if (color !== 'yellow') mark.dataset.color = color;
-        node.replaceWith(mark);
-        mark.appendChild(node);
-        if (!newFirst) newFirst = node;
-        newLast = node;
-      }
-      if (newFirst && newLast) {
-        const r = document.createRange();
-        r.setStart(newFirst, 0);
-        r.setEnd(newLast, newLast.length);
-        sel.removeAllRanges();
-        sel.addRange(r);
-        this.savedRange = r.cloneRange();
-      }
-      void first; void last;
+      const texts = textNodesInRange(range, this.el).filter((t) => t.nodeValue.trim());
+      const allMarked = texts.length > 0 && texts.every((t) => highlightAncestor(t, this.el));
+      document.execCommand('hiliteColor', false, allMarked ? 'transparent' : (HL[color] || HL.yellow));
     }
-    this.el.normalize();
+    try { document.execCommand('styleWithCSS', false, false); } catch { /* ignore */ }
     this.changed('f');
+  }
+
+  isHighlighted() {
+    const sel = document.getSelection();
+    return !!(sel.rangeCount && highlightAncestor(sel.anchorNode, this.el));
+  }
+
+  /** After Enter, a fresh empty line starts as plain text (no highlight, bold, italic…). */
+  resetTypingStyle() {
+    const block = this.currentBlock();
+    if (!block || block.nodeType !== 1 || block.textContent.replace(/\u200b/g, '').trim()) return;
+    if (block.querySelector('mark, b, strong, i, em, u, s, strike, span, font, sub, sup, code, a')) {
+      block.innerHTML = '<br>';
+      const r = document.createRange();
+      r.setStart(block, 0);
+      r.collapse(true);
+      const sel = document.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+    for (const c of ['bold', 'italic', 'underline', 'strikeThrough']) {
+      try { if (document.queryCommandState(c)) document.execCommand(c); } catch { /* ignore */ }
+    }
+    // the browser carries the highlight color onto the new line as "typing style"; clear it
+    const prev = block.previousElementSibling;
+    if (prev && prev.querySelector('span[style*="background"], mark')) {
+      try {
+        document.execCommand('styleWithCSS', false, true);
+        document.execCommand('hiliteColor', false, 'transparent');
+        document.execCommand('styleWithCSS', false, false);
+      } catch { /* ignore */ }
+    }
   }
 
   /* ---------- markdown-style shortcuts ---------- */
@@ -726,6 +742,73 @@ export class Editor {
 }
 
 /* ---------- helpers ---------- */
+
+/** Highlight colors (translucent so they work in light and dark mode). */
+export const HL = {
+  yellow: 'rgba(255, 212, 0, 0.42)', green: 'rgba(64, 192, 87, 0.35)', blue: 'rgba(51, 154, 240, 0.32)',
+  pink: 'rgba(240, 101, 149, 0.32)', purple: 'rgba(132, 94, 247, 0.32)',
+};
+const isClearBg = (c) => !c || /transparent|rgba\(0, 0, 0, 0\)|initial|inherit/.test(c);
+
+function highlightAncestor(node, root) {
+  let el = node?.nodeType === 3 ? node.parentNode : node;
+  while (el && el !== root) {
+    if (el.nodeType === 1 && (el.tagName === 'MARK' || !isClearBg(el.style?.backgroundColor))) return el;
+    el = el.parentNode;
+  }
+  return null;
+}
+
+function colorName(css) {
+  const m = String(css).match(/\d+(\.\d+)?/g);
+  if (!m) return 'yellow';
+  const [r, g, b] = m.map(Number);
+  let best = 'yellow', dist = Infinity;
+  for (const [name, v] of Object.entries(HL)) {
+    const [r2, g2, b2] = v.match(/\d+/g).map(Number);
+    const d = (r - r2) ** 2 + (g - g2) ** 2 + (b - b2) ** 2;
+    if (d < dist) { dist = d; best = name; }
+  }
+  return best;
+}
+
+/** <mark> (stored) → <span style="background-color"> (editable with native undo). */
+function marksToSpans(root) {
+  root.querySelectorAll('mark').forEach((m) => {
+    const span = document.createElement('span');
+    span.style.backgroundColor = HL[m.dataset.color] || HL.yellow;
+    while (m.firstChild) span.appendChild(m.firstChild);
+    m.replaceWith(span);
+  });
+}
+
+/** Editing spans → clean stored HTML: highlighted spans become <mark>, other spans are unwrapped. */
+function spansToMarks(root) {
+  root.querySelectorAll('span').forEach((sp) => {
+    if (sp.closest('[data-ui]')) return;
+    const bg = sp.style.backgroundColor;
+    if (!isClearBg(bg)) {
+      const mark = document.createElement('mark');
+      const name = colorName(bg);
+      if (name !== 'yellow') mark.dataset.color = name;
+      while (sp.firstChild) mark.appendChild(sp.firstChild);
+      sp.replaceWith(mark);
+    } else {
+      sp.replaceWith(...sp.childNodes);
+    }
+  });
+  root.querySelectorAll('[style=""]').forEach((el) => el.removeAttribute('style'));
+  root.querySelectorAll('mark mark').forEach((m) => m.replaceWith(...m.childNodes));
+}
+
+function keepCaret(fn) {
+  const sel = document.getSelection();
+  const saved = sel.rangeCount ? [sel.anchorNode, sel.anchorOffset, sel.focusNode, sel.focusOffset] : null;
+  fn();
+  if (saved && saved[0]?.isConnected && saved[2]?.isConnected) {
+    try { sel.setBaseAndExtent(saved[0], saved[1], saved[2], saved[3]); } catch { /* ignore */ }
+  }
+}
 
 function textNodesInRange(range, root) {
   const out = [];

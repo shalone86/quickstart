@@ -30,7 +30,7 @@ export function renderAsk(root, params) {
 
   const bubble = (m, i) => {
     if (m.role === 'user') return `<div class="msg user"><div class="bubble">${esc(m.content)}</div></div>`;
-    return `<div class="msg ai" data-i="${i}"><div class="bubble md">${m.content ? sanitizeHTML(markdownToHtml(linkify(m.content))) : '<span class="typing"><i></i><i></i><i></i></span>'}</div>
+    return `<div class="msg ai" data-i="${i}"><div class="bubble md">${m.content ? sanitizeHTML(markdownToHtml(m.content, { resolveLink: noteIdFor })) : '<span class="typing"><i></i><i></i><i></i></span>'}</div>
       ${m.status ? `<div class="msg-status">${esc(m.status)}</div>` : ''}
       ${m.notes?.length ? `<div class="msg-refs"><span>${icon('file-text')} Notes used:</span>${m.notes.slice(0, 8).map((n) => `<a class="link-chip" href="#/note/${n.id}">${esc(n.title)}</a>`).join('')}</div>` : ''}
       ${m.sources?.length ? `<div class="msg-refs"><span>${icon('globe')} Web:</span>${m.sources.slice(0, 8).map((s) => `<a class="link-chip" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title || new URL(s.url).hostname)}</a>`).join('')}</div>` : ''}
@@ -98,7 +98,7 @@ export function renderAsk(root, params) {
     if (sv) {
       const m = convo[+sv.dataset.save];
       const q = convo[+sv.dataset.save - 1]?.content || 'AI answer';
-      let html = `<h1>${esc(q.slice(0, 120))}</h1>${sanitizeHTML(markdownToHtml(linkify(m.content)))}`;
+      let html = `<h1>${esc(q.slice(0, 120))}</h1>${sanitizeHTML(markdownToHtml(m.content, { resolveLink: noteIdFor }))}`;
       if (m.notes?.length) html += `<p><b>From my notes:</b> ${m.notes.map((n) => `<a class="note-link" data-note-id="${n.id}" href="#/note/${n.id}">${esc(n.title)}</a>`).join(', ')}</p>`;
       if (m.sources?.length) html += `<p><b>Sources:</b></p><ul>${m.sources.map((s) => `<li><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title || s.url)}</a></li>`).join('')}</ul>`;
       const folder = await store.folderByName('AI answers');
@@ -118,9 +118,4 @@ export function renderAsk(root, params) {
 }
 
 // [[Note title]] in answers → note links
-function linkify(md) {
-  return md.replace(/\[\[([^\]]+)\]\]/g, (m, t) => {
-    const n = store.findNoteByTitle(t);
-    return n ? `[${t}](#/note/${n.id})` : t;
-  });
-}
+function noteIdFor(title) { return store.findNoteByTitle(title)?.id || null; }
