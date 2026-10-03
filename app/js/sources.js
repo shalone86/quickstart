@@ -33,6 +33,9 @@ export const CATALOG = [
   { name: 'National Review', site: 'nationalreview.com', url: 'https://www.nationalreview.com/feed/', groups: ['us'] },
   { name: 'Washington Examiner', site: 'washingtonexaminer.com', url: 'https://www.washingtonexaminer.com/feed', groups: ['us'] },
   { name: 'The Dispatch', site: 'thedispatch.com', url: 'https://thedispatch.com/feed/', groups: ['us'] },
+  { name: 'The Epoch Times', site: 'theepochtimes.com', alt: ['epoch times', 'epoch', 'epochtimes', 'feed.theepochtimes.com'], url: 'https://feed.theepochtimes.com/us/feed', groups: ['us', 'world'] },
+  { name: 'Epoch Times · World', site: 'theepochtimes.com/world', url: 'https://feed.theepochtimes.com/world/feed', groups: ['world'] },
+  { name: 'Epoch Times · Opinion', site: 'theepochtimes.com/opinion', url: 'https://feed.theepochtimes.com/opinion/feed', groups: ['us'] },
   // Hampton Roads
   { name: 'WAVY 10', site: 'wavy.com', alt: ['wavy'], url: 'https://www.wavy.com/feed/', groups: ['local'] },
   { name: 'WTKR News 3', site: 'wtkr.com', alt: ['wtkr'], url: 'https://www.wtkr.com/news.rss', groups: ['local'] },

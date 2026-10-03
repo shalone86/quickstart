@@ -76,3 +76,10 @@ test('For you mixes sources instead of stacking one busy feed', async () => {
   const top3 = rank([...fox, bbc], { terms: {}, sources: {} }, now).slice(0, 3).map((a) => a.title);
   assert.ok(top3.includes('BBC story'));
 });
+
+test('Epoch Times by name, domain and feed', () => {
+  assert.equal(findSource('Epoch Times').name, 'The Epoch Times');
+  assert.equal(findSource('theepochtimes.com').name, 'The Epoch Times');
+  assert.equal(sourceForFeed({ url: 'https://feed.theepochtimes.com/us/feed' }).name, 'The Epoch Times');
+  assert.equal(sourceForFeed({ url: 'https://www.theepochtimes.com/' }).name, 'The Epoch Times');
+});
