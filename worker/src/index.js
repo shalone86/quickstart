@@ -177,13 +177,13 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     if (!authorized(req, env)) return fail(401, env.APP_TOKEN ? 'Wrong access token' : 'Set the APP_TOKEN secret on the Worker first');
     try {
-      if (path === '/api/health') return json({ ok: true, name: 'Scriptorium Worker', version: VERSION, storage: 'D1 + R2', ai: !!env.ANTHROPIC_API_KEY, transcribe: !!env.AI });
+      if (path === '/api/health') return json({ ok: true, name: 'Scriptorium Worker', version: VERSION, storage: 'D1 + R2', ai: !!(env.AI_URL || env.ANTHROPIC_API_KEY), transcribe: !!env.AI });
       if (path === '/api/sync' && req.method === 'POST') return await sync(req, env);
       if (path.startsWith('/api/blob/')) return await blob(req, env, decodeURIComponent(path.slice(10)));
       if (path === '/api/fetch') return await proxyFetch(url);
       if (path === '/api/search') return await search(url, env);
       if (path === '/api/transcribe' && req.method === 'POST') return await transcribe(req, env);
-      if (path === '/api/ai' && req.method === 'POST') return answerResponse(await req.json(), { apiKey: env.ANTHROPIC_API_KEY, model: env.AI_MODEL }, CORS);
+      if (path === '/api/ai' && req.method === 'POST') return answerResponse(await req.json(), { apiKey: env.ANTHROPIC_API_KEY, aiUrl: env.AI_URL, aiKey: env.AI_API_KEY, searxng: env.SEARXNG_URL, model: env.AI_MODEL }, CORS);
       if (path === '/api/share' && req.method === 'POST') return await share(req, env, url);
       if (path.startsWith('/api/share/') && req.method === 'DELETE') return await share(req, env, url, path.slice(11));
       if (path === '/api/backup' && req.method === 'POST') { ctx.waitUntil(backup(env)); return json({ ok: true }); }

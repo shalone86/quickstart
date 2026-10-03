@@ -20,7 +20,7 @@ A local-first notes app built to replace Obsidian notes. Open it and you're alre
 | Text list of all notes | ✅ | **Notes** tab: grouped by date, sort by edited/created/title, filter chips |
 | Tags: easy pop-up, easy to create and apply | ✅ | Tag button → type → Enter creates and applies. Colors in Organize |
 | Synced: server, GitHub/Cloudflare bucket, phone | ✅ | Local IndexedDB + Worker (D1 + R2) or home server + GitHub. See setup below |
-| AI to ask questions about notes, with open web | ✅ | **Ask** tab. Claude reads your most relevant notes, can search the web, links the notes it used, can save the answer as a note. Needs the Worker or server |
+| AI to ask questions about notes, with open web | ✅ | **Ask** tab. The AI (your Ollama via Open WebUI, or Claude) reads your most relevant notes, can search the web, links the notes it used, can save the answer as a note. Needs the Worker or server |
 | SearXNG quick search and add in | ✅ | 🌐 button in a note: insert link, insert snippet, or save page as note |
 | News feed of papers I like + similar papers, one-click save | ✅ | **News** tab: "For you" (new papers for your interests + papers similar to ones you saved, via OpenAlex), RSS feeds (journals, arXiv, Google News topics), paper search. **Save** → note with abstract and full text |
 | Upload images | ✅ | Toolbar, paste, or drag & drop (auto-resized) |
@@ -98,6 +98,15 @@ docker compose -f server/docker-compose.yml up -d
 # or without Docker:  APP_TOKEN=... node server/server.js
 ```
 It serves the app at `http://your-server:8787` and stores everything as files in `server/data/` (plus nightly gzip backups). For transcription, point `WHISPER_URL` at an OpenAI-compatible Whisper server (a commented example is in the compose file). Put it behind HTTPS (e.g. Caddy or Cloudflare Tunnel) to use it from your phone.
+
+**Ask AI with Ollama (Open WebUI):** in Open WebUI, go to **Settings → Account → API keys** and create a key (an admin may need to allow API keys under **Admin Panel → Settings → General**). Then add to `.env`:
+```
+AI_URL=http://192.168.1.86:8028/api     # Open WebUI's API (Ollama directly: http://host:11434/v1)
+AI_API_KEY=sk-...                        # the Open WebUI key
+AI_MODEL=qwen3.6:latest                  # any model name shown in Open WebUI
+SEARXNG_URL=http://192.168.1.86:8083     # used for "search the web" answers
+```
+With `AI_URL` set, Claude isn't used. The same settings work on the Worker (`npx wrangler secret put AI_API_KEY`, plus `AI_URL`/`AI_MODEL` under `[vars]`), but it needs a public address like `https://ollama.shalonely.com/api`.
 
 You can run **both** the home server and the Worker. The app syncs to each destination you turn on. Right now the Settings screen has one server slot plus GitHub, so the usual setup is Worker + GitHub, or home server + GitHub.
 

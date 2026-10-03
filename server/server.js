@@ -4,7 +4,7 @@
 //
 //   APP_TOKEN=some-long-secret node server/server.js
 //
-// Env: PORT (8787), DATA_DIR (server/data), APP_TOKEN (required), ANTHROPIC_API_KEY, AI_MODEL,
+// Env: PORT (8787), DATA_DIR (server/data), APP_TOKEN (required), ANTHROPIC_API_KEY or AI_URL + AI_API_KEY (Ollama / Open WebUI), AI_MODEL,
 //      SEARXNG_URL, WHISPER_URL (OpenAI-compatible, e.g. http://localhost:8000 for faster-whisper-server/speaches),
 //      WHISPER_MODEL, PUBLIC_URL (for share links), ALLOW_PRIVATE_FETCH=1 (let /api/fetch reach your LAN)
 
@@ -182,7 +182,7 @@ async function handleAI(req, res) {
   const sendEv = (ev) => res.write(`data: ${JSON.stringify(ev)}\n\n`);
   try {
     const { answer } = await import('../worker/src/ai.js');
-    await answer(body, { apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.AI_MODEL, send: sendEv });
+    await answer(body, { apiKey: process.env.ANTHROPIC_API_KEY, aiUrl: process.env.AI_URL, aiKey: process.env.AI_API_KEY, searxng: process.env.SEARXNG_URL, model: process.env.AI_MODEL, send: sendEv });
   } catch (e) {
     sendEv({ type: 'error', error: e.code === 'ERR_MODULE_NOT_FOUND' ? 'Run `npm install` in the project folder to enable Ask AI.' : e.message });
   }
@@ -227,7 +227,7 @@ const server = http.createServer(async (req, res) => {
     if (!p.startsWith('/api/')) return await serveStatic(req, res, p);
     if (req.method === 'OPTIONS') return send(res, 204, '');
     if (!authorized(req)) return fail(res, 401, 'Wrong access token');
-    if (p === '/api/health') return json(res, { ok: true, name: 'Scriptorium home server', version: VERSION, storage: `files in ${DATA}`, ai: !!process.env.ANTHROPIC_API_KEY, transcribe: !!process.env.WHISPER_URL });
+    if (p === '/api/health') return json(res, { ok: true, name: 'Scriptorium home server', version: VERSION, storage: `files in ${DATA}`, ai: !!(process.env.AI_URL || process.env.ANTHROPIC_API_KEY), transcribe: !!process.env.WHISPER_URL });
     if (p === '/api/sync' && req.method === 'POST') return await handleSync(req, res);
     if (p.startsWith('/api/blob/')) return await handleBlob(req, res, decodeURIComponent(p.slice(10)));
     if (p === '/api/fetch') return await handleFetch(res, url);
