@@ -84,7 +84,8 @@ export function renderAsk(root, params) {
   let rt = null;
   const throttledRender = () => { if (!rt) rt = setTimeout(() => { rt = null; render(); }, 80); };
 
-  const autosize = () => { ta.style.height = 'auto'; ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`; };
+  // Grow with what you type, but stay one line when empty (the long placeholder would otherwise wrap).
+  const autosize = () => { ta.style.height = 'auto'; ta.style.height = ta.value ? `${Math.min(ta.scrollHeight, 160)}px` : ''; };
   ta.addEventListener('input', autosize);
   ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(ta.value); } });
   form.onsubmit = (e) => { e.preventDefault(); send(ta.value); };

@@ -333,6 +333,26 @@ await t('phone tab bar stays at the bottom, hides for the keyboard, and recovers
   b = await bar();
   assert.ok(b.shown && b.bottom === b.vh, 'bar moved after scrolling');
   assert.equal(await P.evaluate(() => scrollY), 0, 'the page itself must not scroll');
+  // the composer placeholder scrolls with the composer (it used to float in place)
+  await P.evaluate(() => { document.querySelector('.main').scrollTop = 120; });
+  const ph = await P.evaluate(() => { const e = document.querySelector('.composer .editor'); return { pos: getComputedStyle(e).position, empty: e.classList.contains('is-empty') }; });
+  assert.ok(ph.empty && ph.pos === 'relative', `placeholder not anchored to the editor: ${JSON.stringify(ph)}`);
+  await P.evaluate(() => { document.querySelector('.main').scrollTop = 0; });
+  // long unbroken text must not push cards past the screen
+  await P.evaluate(async () => { const s = await import('./js/store.js'); await s.createNote({ html: `<p>${'bdfcc3041ae451b5'.repeat(6)}</p><p>https://understandingwar.org/${'research-path-'.repeat(10)}</p>` }); });
+  await P.reload();
+  await P.waitForSelector('.note-card');
+  const widest = await P.evaluate(() => Math.max(...[...document.querySelectorAll('.note-card')].map((c) => c.getBoundingClientRect().right)));
+  assert.ok(widest <= 412, `a card runs off the screen (right edge ${widest})`);
+  // Ask: the input never covers the page content, even on a short screen
+  await P.evaluate(() => { location.hash = '#/ask'; });
+  await P.waitForSelector('.chat-input');
+  await P.setViewportSize({ width: 412, height: 520 });
+  await P.evaluate(() => document.activeElement?.blur());
+  await P.waitForTimeout(200);
+  const ask = await P.evaluate(() => { const last = [...document.querySelectorAll('.chat .empty > *')].pop().getBoundingClientRect(); const inp = document.querySelector('.chat-input').getBoundingClientRect(); return { contentBottom: Math.round(last.bottom), inputTop: Math.round(inp.top), chatScroll: document.querySelector('.chat').scrollHeight > document.querySelector('.chat').clientHeight }; });
+  assert.ok(ask.contentBottom <= ask.inputTop || ask.chatScroll, `Ask input covers content: ${JSON.stringify(ask)}`);
+  await P.setViewportSize({ width: 412, height: 860 });
   // every main page keeps the bar at the bottom of the screen
   for (const hash of ['#/notes', '#/calendar', '#/news', '#/ask', '#/search', '#/settings', '#/organize']) {
     await P.evaluate((h) => { location.hash = h; }, hash);
