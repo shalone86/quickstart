@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#a02f0d">
+<title>OLPH Post Photos</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<style>
+:root{--bg:#fff;--ink:#1f1b17;--muted:#766c62;--line:#e2dbd1;--soft:#f6f2ed;--accent:#a02f0d;--accent-dark:#86260a;--ok:#2f6b3a;--err:#a1260d;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg)}
+body{padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+.logo{width:30px;height:30px;border-radius:7px;background:var(--accent);color:#fff;display:grid;place-items:center;font:700 16px Georgia,serif}
+header b{font:700 17px Georgia,serif}
+header a,header button.link{margin-left:auto;font-size:13px;color:var(--muted);background:none;border:0;padding:6px}
+main{max-width:560px;margin:0 auto;padding:16px;display:grid;gap:18px}
+.fld{display:grid;gap:6px}
+.lbl{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.lbl span{font-weight:500;text-transform:none;letter-spacing:0}
+input[type=text],input[type=password],input[type=datetime-local]{width:100%;border:1px solid #d3cbc0;border-radius:10px;padding:12px;font-size:16px;background:#fff}
+.pick{display:flex;align-items:center;justify-content:center;gap:8px;border:2px dashed #d3cbc0;border-radius:12px;padding:22px;background:var(--soft);font-weight:600;color:var(--accent)}
+.pick svg{width:22px;height:22px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+@media (min-width:480px){.grid{grid-template-columns:repeat(5,1fr)}}
+.ph{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:#eee;border:0;padding:0}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph.feat{outline:3px solid var(--accent);outline-offset:-3px}
+.ph .star{position:absolute;left:4px;top:4px;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;box-shadow:0 0 0 2px #fff}
+.ph .rm{position:absolute;right:3px;top:3px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border:0;display:grid;place-items:center;font-size:15px;line-height:1}
+.ph .t{position:absolute;left:0;right:0;bottom:0;padding:10px 4px 3px;background:linear-gradient(transparent,rgba(0,0,0,.6));color:#fff;font:11px/1.2 Menlo,monospace;text-align:left}
+.ph .bar{position:absolute;left:0;bottom:0;height:4px;background:var(--accent);transition:width .2s}
+.ph.done::after{content:"✓";position:absolute;right:4px;bottom:3px;color:#fff;font-weight:700;text-shadow:0 0 3px #000}
+.ph.fail{outline:3px solid var(--err);outline-offset:-3px}
+.more{border:1px dashed #d3cbc0;background:var(--soft);color:var(--accent);font-size:26px;border-radius:6px;aspect-ratio:1}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:#efe9e2;border-radius:10px;padding:3px;gap:3px}
+.seg button{border:0;border-radius:8px;padding:10px 6px;background:transparent;color:var(--muted);font-size:14.5px}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.note{font-size:13px;color:var(--muted)}
+.datebox{background:var(--soft);border-radius:10px;padding:12px;display:grid;gap:3px}
+.datebox b{font:600 17px Georgia,serif}
+.datebox .row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.textbtn{background:none;border:0;color:var(--accent);font-weight:600;padding:4px 0;font-size:14px}
+.primary{border:0;border-radius:12px;background:var(--accent);color:#fff;padding:15px;font-weight:700;font-size:16.5px;width:100%}
+.primary:active{background:var(--accent-dark)}
+.primary[disabled]{opacity:.55}
+.msg{border-radius:10px;padding:12px;font-size:14.5px}
+.msg.err{background:#fbe9e4;color:var(--err)}
+.msg.ok{background:#e5f1e6;color:var(--ok)}
+.progress{height:8px;background:#efe9e2;border-radius:99px;overflow:hidden}
+.progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.done-card{display:grid;gap:14px;text-align:center;padding:24px 8px}
+.done-card h2{margin:0;font:700 24px Georgia,serif}
+.done-card img{width:100%;max-height:260px;object-fit:cover;border-radius:12px}
+.done-card a.primary{display:block;text-decoration:none}
+.secondary{border:1px solid #d3cbc0;background:#fff;border-radius:12px;padding:13px;font-weight:600;width:100%}
+.login{max-width:380px;margin:12vh auto 0;padding:16px;display:grid;gap:14px}
+.login h1{margin:0;font:700 26px Georgia,serif}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">O</span><b>Post Photos</b>
+  <button class="link" id="signout" hidden>Sign out</button>
+</header>
+
+<!-- Sign in -->
+<form class="login" id="login" hidden>
+  <h1>Sign in</h1>
+  <p class="note">Enter the parish photo passcode. You'll stay signed in on this phone for 60 days.</p>
+  <input type="password" id="passcode" autocomplete="current-password" placeholder="Passcode" required>
+  <div class="msg err" id="loginErr" hidden></div>
+  <button class="primary" type="submit">Sign in</button>
+</form>
+
+<!-- Compose -->
+<main id="compose" hidden>
+  <div class="fld">
+    <label class="lbl" for="title">Title</label>
+    <input type="text" id="title" placeholder="e.g. Palm Sunday Photos 2026" maxlength="255" autocomplete="off" enterkeyhint="done">
+  </div>
+
+  <div class="fld">
+    <div class="lbl">Photos <span id="count"></span></div>
+    <label class="pick" id="pickBig">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 17l-5-5-8 7"/></svg>
+      Choose photos
+      <input type="file" id="files" accept="image/*" multiple hidden>
+    </label>
+    <div class="grid" id="grid" hidden></div>
+    <p class="note" id="gridHint" hidden>Tap a photo to make it the featured image. Tap × to remove it.</p>
+  </div>
+
+  <div class="fld" id="featFld" hidden>
+    <div class="lbl">Featured image</div>
+    <div class="seg">
+      <button type="button" id="modeRandom" aria-pressed="true">🎲 Random</button>
+      <button type="button" id="modePick" aria-pressed="false">★ I'll pick</button>
+    </div>
+    <p class="note" id="featNote"></p>
+  </div>
+
+  <div class="fld" id="dateFld" hidden>
+    <div class="lbl">Post date</div>
+    <div class="datebox">
+      <div class="row"><b id="dateText"></b><button type="button" class="textbtn" id="dateEdit">Change</button></div>
+      <span class="note" id="dateSrc"></span>
+      <input type="datetime-local" id="dateInput" hidden>
+    </div>
+  </div>
+
+  <div class="fld" id="statusFld" hidden>
+    <div class="lbl">When it's ready</div>
+    <div class="seg">
+      <button type="button" id="stPublish" aria-pressed="true">Publish now</button>
+      <button type="button" id="stDraft" aria-pressed="false">Save as draft</button>
+    </div>
+  </div>
+
+  <div class="msg err" id="err" hidden></div>
+  <div class="fld" id="prog" hidden>
+    <div class="lbl"><span id="progText">Uploading…</span></div>
+    <div class="progress"><i id="progBar"></i></div>
+    <p class="note">Keep this screen open until it's finished.</p>
+  </div>
+  <button class="primary" id="publish" disabled>Publish</button>
+</main>
+
+<!-- Done -->
+<main id="done" hidden>
+  <div class="done-card">
+    <h2 id="doneTitle">Posted</h2>
+    <img id="doneImg" alt="">
+    <p class="note" id="doneNote"></p>
+    <a class="primary" id="doneLink" target="_blank" rel="noopener">View the post</a>
+    <button class="secondary" id="again">Post more photos</button>
+  </div>
+</main>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>
