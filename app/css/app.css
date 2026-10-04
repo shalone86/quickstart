@@ -717,3 +717,16 @@ body:has(.sheet-backdrop) .toasts { bottom: auto; top: calc(14px + var(--safe-t)
 .note-card, .note-row-main, .news-card, .msg .bubble { min-width: 0; overflow-wrap: anywhere; }
 .note-card h3, .note-card-snip { overflow-wrap: anywhere; word-break: break-word; }
 .chat-input textarea:placeholder-shown { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* News → Find sources */
+.find-mode { display: flex; margin-bottom: 12px; }
+.find-mode button { flex: 1; justify-content: center; }
+.source-list { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.source-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.source-row:last-child { border-bottom: 0; }
+.source-main { flex: 1; min-width: 0; }
+.source-main b { display: block; }
+.source-main small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.source-on { display: inline-flex; align-items: center; gap: 4px; }
+.source-on .ic { width: 15px; height: 15px; }
+.source-more { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 14px 0; }

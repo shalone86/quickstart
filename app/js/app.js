@@ -51,8 +51,11 @@ function route() {
   closePopover();
   try { cleanup?.(); } catch (e) { console.error(e); }
   cleanup = null;
-  const view = $('#view');
-  view.innerHTML = '';
+  // A fresh container per screen: listeners a screen attached to the old one go away with it.
+  // (Reusing one element stacked them up, so one tap on ⋯ could open a menu once per earlier visit.)
+  const old = $('#view');
+  const view = old.cloneNode(false);
+  old.replaceWith(view);
   view.scrollTop = 0;
   window.scrollTo(0, 0);
   // Always start from the normal (tab bar visible) state, so a bad route can't leave it hidden.

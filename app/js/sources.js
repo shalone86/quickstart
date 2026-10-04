@@ -119,3 +119,24 @@ export function relatedSources(feeds, { affinity = {}, dismissed = [], limit = 6
   }).filter((x) => x.score > 0);
   return scored.sort((a, b) => b.score - a.score).slice(0, limit);
 }
+
+/** Search the catalog by name, nickname, website or category ("bbc", "catholic", "local", "wavy.com"). Best first. */
+export function searchSources(text) {
+  const q = keyOf(String(text || '').replace(/^https?:\/\//, '').replace(/\/.*$/, ''));
+  if (!q) return [];
+  const words = q.split(' ').filter(Boolean);
+  const scored = [];
+  for (const c of CATALOG) {
+    const name = keyOf(c.name);
+    const alts = (c.alt || []).map(keyOf);
+    const groups = c.groups.map((g) => keyOf(`${g} ${GROUPS[g] || ''}`));
+    let score = 0;
+    if (name === q || alts.includes(q) || c.site === q) score = 100;
+    else if (name.startsWith(q) || alts.some((a) => a.startsWith(q))) score = 60;
+    else if (c.site.startsWith(q) || hostOf(c.url).startsWith(q)) score = 50;
+    else if (words.every((w) => name.includes(w) || alts.some((a) => a.includes(w)) || c.site.includes(w))) score = 30;
+    else if (words.every((w) => groups.some((g) => g.includes(w)))) score = 20 - c.groups.findIndex((g) => groups[c.groups.indexOf(g)].includes(words[0]));
+    if (score > 0) scored.push({ source: c, score });
+  }
+  return scored.sort((a, b) => b.score - a.score || a.source.name.localeCompare(b.source.name)).map((x) => x.source);
+}
