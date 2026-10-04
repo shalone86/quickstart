@@ -318,6 +318,52 @@ await t('Ask AI inside a note sends the note and inserts the answer', async () =
   await ctx.close();
 });
 
+await t('phone tab bar stays at the bottom, hides for the keyboard, and recovers from bad routes', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true, isMobile: true });
+  const P = await ctx.newPage();
+  await P.goto(`${BASE}#/`);
+  await P.waitForSelector('.composer .editor');
+  await P.evaluate(async () => { const s = await import('./js/store.js'); for (let i = 0; i < 25; i++) await s.createNote({ html: `<p>Note ${i}</p><p>${'lorem ipsum '.repeat(20)}</p>` }); });
+  await P.reload();
+  await P.waitForSelector('.note-card');
+  const bar = () => P.$eval('.tabbar', (e) => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), shown: getComputedStyle(e).display !== 'none', vh: innerHeight }; });
+  let b = await bar();
+  assert.ok(b.shown && b.bottom === b.vh, `bar not at the bottom: ${JSON.stringify(b)}`);
+  await P.evaluate(() => { document.querySelector('.main').scrollTop = 99999; });
+  b = await bar();
+  assert.ok(b.shown && b.bottom === b.vh, 'bar moved after scrolling');
+  assert.equal(await P.evaluate(() => scrollY), 0, 'the page itself must not scroll');
+  // every main page keeps the bar at the bottom of the screen
+  for (const hash of ['#/notes', '#/calendar', '#/news', '#/ask', '#/search', '#/settings', '#/organize']) {
+    await P.evaluate((h) => { location.hash = h; }, hash);
+    await P.waitForTimeout(250);
+    await P.evaluate(() => document.activeElement?.blur());
+    await P.waitForTimeout(120);
+    const x = await bar();
+    assert.ok(x.shown && x.bottom === x.vh, `bar not at the bottom on ${hash}: ${JSON.stringify(x)}`);
+  }
+  await P.evaluate(() => { location.hash = '#/'; });
+  await P.waitForSelector('.composer');
+  // keyboard: the window shrinks while typing
+  await P.tap('.composer .editor');
+  await P.setViewportSize({ width: 412, height: 420 });
+  await P.waitForTimeout(200);
+  assert.equal((await bar()).shown, false, 'bar should hide while the keyboard is open');
+  await P.setViewportSize({ width: 412, height: 860 });
+  await P.waitForTimeout(200);
+  b = await bar();
+  assert.ok(b.shown && b.bottom === b.vh, 'bar should return when the keyboard closes, even if the field is still focused');
+  // a bad route after a note must not leave it hidden
+  await P.evaluate(() => document.activeElement.blur());
+  await P.tap('.note-card >> nth=0');
+  await P.waitForSelector('.note-view');
+  assert.equal((await bar()).shown, false);
+  await P.evaluate(() => { location.hash = '#/nope'; });
+  await P.waitForTimeout(200);
+  assert.ok((await bar()).shown, 'bar hidden after unknown route');
+  await ctx.close();
+});
+
 await t('no uncaught page errors', async () => { assert.deepEqual(errors, []); });
 
 console.log(`\n${passed} passed`);
