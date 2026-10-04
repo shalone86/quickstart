@@ -6,7 +6,7 @@
 import * as store from '../store.js';
 import { settings, saveSettings, hasServer, api } from '../settings.js';
 import { forYou, loadAllFeeds, searchPapers, similarPapers, paperByUrl, PRESET_FEEDS, googleNewsFeed, discoverFeed, searchNews } from '../feeds.js';
-import { CATALOG, GROUPS, findSource, sourceForFeed, relatedSources, googleQuery } from '../sources.js';
+import { CATALOG, GROUPS, findSource, sourceForFeed, relatedSources, googleQuery, searchSources } from '../sources.js';
 import { profile, learn, rank, parseTakeout, importHistory, resetProfile } from '../reading.js';
 import { saveArticle } from '../article.js';
 import { tokenize } from '../text.js';
@@ -16,7 +16,9 @@ import { h, sheet, toast, spinner, promptDialog, confirmDialog, pickFiles } from
 import { nav } from './common.js';
 
 const cache = { forYou: null, feeds: null, at: 0 };
-let tab = 'foryou';
+let tab = 'feeds'; // News opens on your news feeds
+let findMode = 'sources';
+let findQuery = '';
 let feedQuery = '';
 let feedSource = 'all';
 
@@ -41,7 +43,7 @@ export function renderNews(root) {
   root.innerHTML = `
     <header class="page-head"><div><div class="eyebrow">Your feed</div><h1>News & papers</h1></div>
       <div class="head-actions"><button class="icon-btn" data-a="refresh" aria-label="Refresh">${icon('refresh-cw')}</button><button class="icon-btn" data-a="manage" aria-label="Manage sources">${icon('settings')}</button></div></header>
-    <div class="seg wide tabs"><button data-tab="foryou">${icon('sparkles')} For you</button><button data-tab="feeds">${icon('newspaper')} Feeds</button><button data-tab="search">${icon('search')} Search</button></div>
+    <div class="seg wide tabs"><button data-tab="feeds">${icon('newspaper')} News</button><button data-tab="foryou">${icon('book-open')} Papers</button><button data-tab="search">${icon('search')} Find</button></div>
     <form class="search-bar news-save">${icon('link')}<input class="input" name="url" placeholder="Paste any article or paper link to save it" inputmode="url" autocomplete="off"></form>
     <div class="news-body"></div>`;
   const body = root.querySelector('.news-body');
@@ -230,7 +232,8 @@ export function renderNews(root) {
       } catch (e) { body.innerHTML = `<p class="error">${esc(e.message)}</p>`; }
     } else if (tab === 'feeds') {
       if (!store.feeds().length) {
-        body.innerHTML = `<div class="empty">${icon('newspaper', 'empty-ic')}<h3>No feeds yet</h3><p>Add news sites, journals, blogs or a Google News topic.</p><button class="btn primary" data-a="manage">Add feeds</button></div>`;
+        body.innerHTML = `<div class="empty small">${icon('newspaper', 'empty-ic')}<h3>Pick your news sources</h3><p>Search for an outlet or a topic below, or browse by category.</p></div><div class="find-box"></div>`;
+        renderFind(body.querySelector('.find-box'), 'sources');
         return;
       }
       if (!store.feeds().some((f) => f.id === feedSource)) feedSource = 'all';
@@ -240,16 +243,63 @@ export function renderNews(root) {
       }
       renderFeeds();
     } else {
-      body.innerHTML = `<form class="search-bar paper-search">${icon('search')}<input class="input" name="q" placeholder="Search 250M+ papers (OpenAlex)" autocomplete="off" enterkeyhint="search"></form><div class="paper-results"></div>`;
-      const f = body.querySelector('.paper-search');
+      body.innerHTML = `<div class="seg find-mode"><button data-find="sources" class="${findMode === 'sources' ? 'on' : ''}">${icon('newspaper')} News sources</button><button data-find="papers" class="${findMode === 'papers' ? 'on' : ''}">${icon('book-open')} Papers</button></div><div class="find-box"></div>`;
+      renderFind(body.querySelector('.find-box'), findMode);
+    }
+  };
+
+  /* ---------------- Find: news sources (catalog, any website, Google News topics) or papers ---------------- */
+
+  const renderFind = (box, mode) => {
+    if (mode === 'papers') {
+      box.innerHTML = `<form class="search-bar paper-search">${icon('search')}<input class="input" name="q" placeholder="Search 250M+ papers (OpenAlex)" autocomplete="off" enterkeyhint="search"></form><div class="paper-results"></div>`;
+      const f = box.querySelector('.paper-search');
       f.onsubmit = async (e) => {
         e.preventDefault();
-        const out = body.querySelector('.paper-results');
+        const out = box.querySelector('.paper-results');
         out.innerHTML = spinner('Searching papers…');
         try { const res = await searchPapers(f.q.value.trim()); out.innerHTML = `<div class="news-list">${res.map(paperCard).join('')}</div>`; } catch (err) { out.innerHTML = `<p class="error">${esc(err.message)}</p>`; }
       };
       f.q.focus();
+      return;
     }
+    box.innerHTML = `<form class="search-bar source-search">${icon('search')}<input class="input" name="q" placeholder="Search sources: BBC, Catholic, local, wavy.com…" autocomplete="off" enterkeyhint="search" value="${esc(findQuery)}"></form><div class="source-results"></div>`;
+    const f = box.querySelector('.source-search');
+    const draw = () => drawSources(box.querySelector('.source-results'), findQuery.trim());
+    f.q.oninput = () => { findQuery = f.q.value; draw(); };
+    f.onsubmit = (e) => { e.preventDefault(); f.q.blur(); };
+    draw();
+  };
+
+  const followedNames = () => new Set(store.feeds().map((x) => sourceForFeed(x)?.name).filter(Boolean));
+  const followingTopic = (q) => store.feeds().some((x) => googleQuery(x.url).toLowerCase() === q.toLowerCase());
+  const sourceRow = (c, followed) => `<div class="source-row">
+      <div class="source-main"><b>${esc(c.name)}</b><small>${esc(c.groups.map((g) => GROUPS[g]).filter(Boolean).join(' · '))} · ${esc(c.site)}</small></div>
+      ${followed.has(c.name) ? `<span class="muted small source-on">${icon('check')} Following</span>` : `<button class="btn small primary" data-add-source="${esc(c.name)}">${icon('plus')} Add</button>`}
+    </div>`;
+
+  const drawSources = (out, q) => {
+    const followed = followedNames();
+    if (!q) {
+      // browse by category
+      out.innerHTML = Object.entries(GROUPS).map(([g, label]) => `<h3 class="sec-title">${esc(label)}</h3>
+        <div class="source-list">${CATALOG.filter((c) => c.groups[0] === g).map((c) => sourceRow(c, followed)).join('')}</div>`).join('');
+      return;
+    }
+    const hits = searchSources(q);
+    const looksLikeSite = isUrl(q) || /^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(q);
+    out.innerHTML = `
+      ${hits.length ? `<div class="source-list">${hits.slice(0, 30).map((c) => sourceRow(c, followed)).join('')}</div>` : `<p class="muted hint">No outlet called “${esc(q)}” in the catalog.</p>`}
+      <div class="source-more">
+        ${looksLikeSite ? `<button class="btn" data-a="add-site">${icon('globe')} Add the site ${esc(q.replace(/^https?:\/\//, ''))}</button>` : ''}
+        ${followingTopic(q) ? `<span class="muted small">${icon('check')} Following “${esc(q)}” on Google News</span>` : `<button class="btn ghost" data-a="follow-topic">${icon('search')} Follow “${esc(q)}” as a Google News topic</button>`}
+      </div>`;
+  };
+
+  const refreshFind = () => {
+    cache.feeds = null;
+    const res = body.querySelector('.source-results');
+    if (res) drawSources(res, findQuery.trim());
   };
 
   const doSave = async (b, it) => {
@@ -275,10 +325,15 @@ export function renderNews(root) {
     if (sortBtn) { local.set('sort', sortBtn.dataset.sort); body.querySelectorAll('[data-sort]').forEach((x) => x.classList.toggle('on', x === sortBtn)); renderResults(cache.feeds.articles); return; }
     const srcChip = e.target.closest('[data-src]');
     if (srcChip) { feedSource = srcChip.dataset.src; body.querySelectorAll('[data-src]').forEach((x) => x.classList.toggle('on', x === srcChip)); renderResults(cache.feeds.articles); return; }
+    const fm = e.target.closest('[data-find]');
+    if (fm) { findMode = fm.dataset.find; show(); return; }
     const addSrc = e.target.closest('[data-add-source]');
     if (addSrc) {
       const s = CATALOG.find((c) => c.name === addSrc.dataset.addSource);
-      if (s) { await store.saveFeed({ url: s.url, title: s.name }); toast(`Added ${s.name}`); reloadFeeds(); }
+      if (!s) return;
+      await store.saveFeed({ url: s.url, title: s.name });
+      toast(`Added ${s.name} to your news`);
+      if (body.querySelector('.source-results')) refreshFind(); else reloadFeeds();
       return;
     }
     const up = e.target.closest('[data-upgrade]');
@@ -295,6 +350,16 @@ export function renderNews(root) {
     if (a === 'manage') { manageSources(() => { cache.forYou = null; cache.feeds = null; show(true); }); return; }
     if (a === 'clear-q') { feedQuery = ''; renderFeeds(); return; }
     if (a === 'web-search') { webSearch(feedQuery.trim()); return; }
+    if (a === 'add-site' || a === 'follow-topic') {
+      const q = findQuery.trim();
+      b.disabled = true;
+      try {
+        const f = a === 'add-site' ? await addFeedFrom(isUrl(q) ? q : `https://${q}`) : await store.saveFeed({ url: googleNewsFeed(q), title: `Google News · ${q}` });
+        toast(`Added ${f.title} to your news`);
+        refreshFind();
+      } catch (err) { b.disabled = false; toast(err.message, { kind: 'error' }); }
+      return;
+    }
     if (a === 'dismiss-warn') { local.set('dismissedErrors', b.closest('.notice').dataset.key); b.closest('.notice').remove(); return; }
     if (a === 'dismiss-suggest') {
       const names = [...b.closest('.notice').querySelectorAll('[data-add-source]')].map((x) => x.dataset.addSource);

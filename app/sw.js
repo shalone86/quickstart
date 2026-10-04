@@ -1,6 +1,6 @@
 // Offline support: the whole app is cached so it opens instantly with no connection.
 // Updated files are fetched in the background and used on the next launch.
-const VERSION = 'scriptorium-v5';
+const VERSION = 'scriptorium-v6';
 const SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'vendor/Readability.js',
   'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',

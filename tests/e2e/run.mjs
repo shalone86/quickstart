@@ -384,6 +384,37 @@ await t('phone tab bar stays at the bottom, hides for the keyboard, and recovers
   await ctx.close();
 });
 
+await t('one tap opens one menu after moving between screens', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 860 }, hasTouch: true, isMobile: true });
+  const P = await ctx.newPage();
+  await P.goto(`${BASE}#/notes`);
+  await P.evaluate(async () => { const s = await import('./js/store.js'); await s.createNote({ html: '<p>Menu note</p>' }); });
+  for (const h of ['#/', '#/notes', '#/', '#/notes']) { await P.evaluate((x) => { location.hash = x; }, h); await P.waitForTimeout(200); }
+  await P.click('[data-more]');
+  await P.waitForTimeout(300);
+  assert.equal(await P.$$eval('.sheet-backdrop, .popover', (e) => e.length), 1);
+  await ctx.close();
+});
+
+await t('news opens on news and Find searches news sources', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 860 } });
+  const P = await ctx.newPage();
+  await P.route(/^https?:\/\/(?!127\.0\.0\.1|localhost)/, (r) => r.abort());
+  await P.goto(`${BASE}#/news`);
+  await P.waitForSelector('[data-tab="feeds"].on');
+  assert.equal(await P.$eval('.tabs button', (b) => b.dataset.tab), 'feeds');
+  await P.click('[data-tab="search"]');
+  await P.waitForSelector('.source-search');
+  await P.fill('.source-search input', 'bbc');
+  await P.waitForSelector('[data-add-source="BBC News"]');
+  await P.click('[data-add-source="BBC News"]');
+  await P.waitForSelector('.source-on');
+  assert.ok(await P.evaluate(async () => (await import('./js/store.js')).feeds().some((f) => f.title === 'BBC News')));
+  await P.fill('.source-search input', 'pickleball');
+  await P.waitForSelector('[data-a="follow-topic"]');
+  await ctx.close();
+});
+
 await t('no uncaught page errors', async () => { assert.deepEqual(errors, []); });
 
 console.log(`\n${passed} passed`);
