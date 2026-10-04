@@ -55,15 +55,24 @@ function route() {
   view.innerHTML = '';
   view.scrollTop = 0;
   window.scrollTo(0, 0);
+  // Always start from the normal (tab bar visible) state, so a bad route can't leave it hidden.
+  document.body.classList.remove('in-note', 'kbd');
   for (const [re, fn, tab] of ROUTES) {
     const m = path.match(re);
     if (!m) continue;
     document.body.dataset.route = tab;
     document.body.classList.toggle('in-note', path.startsWith('/note/'));
     markNav(tab, raw);
-    cleanup = fn(view, params, m[1]) || null;
+    try {
+      cleanup = fn(view, params, m[1]) || null;
+    } catch (e) {
+      console.error(e);
+      document.body.classList.remove('in-note');
+      view.innerHTML = `<div class="empty"><h3>Something went wrong</h3><p>${esc(e.message || String(e))}</p><a class="btn" href="#/">Go home</a></div>`;
+    }
     return;
   }
+  document.body.dataset.route = 'none';
   view.innerHTML = `<div class="empty"><h3>Page not found</h3><a class="btn" href="#/">Go home</a></div>`;
 }
 
@@ -189,6 +198,18 @@ async function main() {
       });
     }).catch((e) => console.warn('SW registration failed', e));
   }
+  // On phones, hide the tab bar while the keyboard is open so it never rides on top of it.
+  // "Open" = the window got much shorter than its normal height; focus alone isn't enough, because
+  // Android leaves a text box focused after the keyboard is dismissed with Back.
+  const typing = (el) => !!el && (el.isContentEditable || (/^(INPUT|TEXTAREA)$/.test(el.tagName) && !/^(checkbox|radio|button|file|range|color)$/.test(el.type)));
+  let baseH = innerHeight, baseW = innerWidth;
+  const keyboardOpen = () => innerHeight < baseH - 120;
+  addEventListener('resize', () => {
+    if (innerWidth !== baseW) { baseW = innerWidth; baseH = innerHeight; } // rotated
+    else if (innerHeight > baseH) baseH = innerHeight;
+    document.body.classList.toggle('kbd', keyboardOpen() && typing(document.activeElement));
+  });
+  document.addEventListener('focusout', () => setTimeout(() => { if (!typing(document.activeElement)) document.body.classList.remove('kbd'); }, 80));
   // global shortcuts
   document.addEventListener('keydown', (e) => {
     const mod = e.metaKey || e.ctrlKey;

@@ -149,14 +149,28 @@ select.input { appearance: auto; }
 
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; justify-content: space-around;
-  background: color-mix(in srgb, var(--card) 88%, transparent); backdrop-filter: saturate(1.6) blur(18px); -webkit-backdrop-filter: saturate(1.6) blur(18px);
+  background: var(--card);
   border-top: 1px solid var(--line); padding-bottom: var(--safe-b); height: calc(var(--tabbar-h) + var(--safe-b));
 }
 .tabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 11px; font-weight: 600; }
 .tabbar a .ic { width: 23px; height: 23px; }
 .tabbar a.on { color: var(--accent-strong); }
-body.in-note .tabbar { display: none; }
+body.in-note .tabbar, body.kbd .tabbar { display: none; }
 body.in-note .main { padding-bottom: calc(24px + var(--safe-b)); }
+
+/* Phones: an app shell. The page never scrolls; the content scrolls inside .main and the tab bar is a
+   normal strip under it, so it can't float, hide or jump when the keyboard or browser bars change. */
+@media (max-width: 899px) {
+  html, body { height: 100%; overflow: hidden; }
+  body { min-height: 0; }
+  .app { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+  .main { flex: 1 1 auto; min-height: 0; width: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 28px; }
+  .tabbar { position: static; flex: none; }
+  body.in-note .main, body.kbd .main { padding-bottom: calc(24px + var(--safe-b)); }
+  .chat-input { bottom: 10px; }
+  .toasts { bottom: calc(var(--tabbar-h) + 14px + var(--safe-b)); }
+  body.kbd .toasts, body.in-note .toasts { bottom: 14px; }
+}
 
 @media (min-width: 900px) {
   .app { display: grid; grid-template-columns: 260px 1fr; }
@@ -587,7 +601,8 @@ body.in-note .toasts { bottom: calc(20px + var(--safe-b)); }
 .howto ol { padding-left: 1.3em; margin: 8px 0 0; }
 
 /* ---------- ask ---------- */
-body[data-route="ask"] .main { display: flex; flex-direction: column; min-height: 100vh; }
+body[data-route="ask"] .main { display: flex; flex-direction: column; }
+@media (min-width: 900px) { body[data-route="ask"] .main { min-height: 100vh; } }
 .chat { flex: 1; display: flex; flex-direction: column; gap: 14px; padding-bottom: 12px; }
 .msg { display: flex; flex-direction: column; gap: 6px; }
 .msg.user { align-items: flex-end; }
